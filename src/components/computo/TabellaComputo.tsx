@@ -1,7 +1,7 @@
-import { useState, useCallback } from 'react';
-import { Plus, Trash2, Copy, AlertCircle } from 'lucide-react';
+import { useCallback } from 'react';
+import { Plus, Trash2, Copy, AlertCircle, Search, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useRicercaPrezzario } from '@/App';
+import { useApp, useRicercaPrezzario } from '@/App';
 import { UNITA_MISURA_FORMULE } from '@/types';
 import type { RigaComputo, Misurazione, UnitàMisura } from '@/types';
 import { formattaImporto, formattaNumero } from '@/utils/exportUtils';
@@ -145,14 +145,13 @@ function BloccoVoce({
   onUpdate,
   onDelete,
   onDuplicate,
-  onMoveUp,
-  onMoveDown,
+  
+  
   onAddMisurazione,
   onUpdateMisurazione,
   onDeleteMisurazione,
   onOpenRicerca,
-  isFirst,
-  isLast,
+
 }: RigaComputoProps) {
   const { validaRiga } = useApp();
   const validazione = validaRiga(riga);
