@@ -314,42 +314,24 @@ interface RigaComputoProps {
   onAddMisurazione: (rigaId: string) => void;
   onUpdateMisurazione: (rigaId: string, misId: string, updates: Partial<Misurazione>) => void;
   onDeleteMisurazione: (rigaId: string, misId: string) => void;
+  onOpenRicerca: (rigaId: string) => void;
   isFirst?: boolean;
   isLast?: boolean;
 }
 
 function RigaComputoComponent({
   riga, onUpdate, onDelete, onDuplicate, onMoveUp, onMoveDown,
-  onAddMisurazione, onUpdateMisurazione, onDeleteMisurazione, isFirst, isLast,
+  onAddMisurazione, onUpdateMisurazione, onDeleteMisurazione, onOpenRicerca, isFirst, isLast,
 }: RigaComputoProps) {
-  const { state, validaRiga } = useApp();
-  const [showModal, setShowModal] = useState(false);
+  const { validaRiga } = useApp();
   const [expanded, setExpanded] = useState(true);
   const formula = UNITA_MISURA_FORMULE[riga.unitaMisura];
   const validazione = validaRiga(riga);
   const nMis = riga.misurazioni.length;
   const hasNeg = riga.misurazioni.some(m => m.segno === -1);
 
-  const handleVoceSelect = useCallback((voce: VocePrezzario) => {
-    onUpdate(riga.id, {
-      codice: voce.codice,
-      descrizione: voce.descrizione,
-      unitaMisura: voce.unitaMisura,
-      prezzoUnitario: voce.prezzoUnitario,
-    });
-  }, [riga.id, onUpdate]);
-
   return (
     <>
-      {/* MODALE RICERCA */}
-      {showModal && (
-        <ModalRicercaPrezzario
-          onSelect={handleVoceSelect}
-          onClose={() => setShowModal(false)}
-        />
-      )}
-
-      {/* RIGA PRINCIPALE */}
       <tr className={`border-b hover:bg-gray-50 transition-colors ${!validazione.valida ? 'bg-red-50' : ''}`}>
         {/* N. + toggle */}
         <td className="px-2 py-2 text-center text-sm text-gray-500 w-10">
@@ -370,22 +352,20 @@ function RigaComputoComponent({
               placeholder="Codice"
               className="h-8 px-2 py-1 text-sm font-mono border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-500"
             />
-            {state.prezzario.length > 0 && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost" size="sm"
-                      onClick={() => setShowModal(true)}
-                      className="h-7 w-7 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50 flex-shrink-0"
-                    >
-                      <Search className="h-3.5 w-3.5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent><p>Cerca nel prezzario</p></TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost" size="sm"
+                    onClick={() => onOpenRicerca(riga.id)}
+                    className="h-7 w-7 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50 flex-shrink-0"
+                  >
+                    <Search className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent><p>Cerca nel prezzario</p></TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </td>
 
@@ -395,20 +375,17 @@ function RigaComputoComponent({
             <Input
               value={riga.descrizione}
               onChange={(e) => onUpdate(riga.id, { descrizione: e.target.value })}
-              placeholder={state.prezzario.length > 0 ? 'Descrizione (o cerca con 🔍)' : 'Descrizione lavorazione'}
+              placeholder="Descrizione lavorazione"
               className="h-8 px-2 py-1 text-sm border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-500"
             />
-            {/* Secondo pulsante ricerca sulla descrizione (più visibile) */}
-            {state.prezzario.length > 0 && (
-              <Button
-                variant="outline" size="sm"
-                onClick={() => setShowModal(true)}
-                className="h-7 px-2 text-xs text-blue-600 border-blue-200 hover:bg-blue-50 flex-shrink-0 gap-1"
-              >
-                <Search className="h-3 w-3" />
-                Prezzario
-              </Button>
-            )}
+            <Button
+              variant="outline" size="sm"
+              onClick={() => onOpenRicerca(riga.id)}
+              className="h-7 px-2 text-xs text-blue-600 border-blue-200 hover:bg-blue-50 flex-shrink-0 gap-1"
+            >
+              <Search className="h-3 w-3" />
+              Prezzario
+            </Button>
           </div>
         </td>
 
@@ -520,6 +497,27 @@ export function TabellaComputo({ categoriaId }: TabellaComputoProps) {
   const righe = getRighePerCategoria(categoriaId);
   const totaleCategoria = totaliPerCategoria.find(t => t.categoriaId === categoriaId)?.totale || 0;
 
+  // Modale ricerca: gestita qui, fuori dalla tabella
+  const [rigaPerRicerca, setRigaPerRicerca] = useState<string | null>(null);
+
+  const handleOpenRicerca = useCallback((rigaId: string) => {
+    setRigaPerRicerca(rigaId);
+  }, []);
+
+  const handleVoceSelect = useCallback((voce: VocePrezzario) => {
+    if (!rigaPerRicerca) return;
+    dispatch({ type: 'UPDATE_RIGA', payload: {
+      id: rigaPerRicerca,
+      updates: {
+        codice: voce.codice,
+        descrizione: voce.descrizione,
+        unitaMisura: voce.unitaMisura,
+        prezzoUnitario: voce.prezzoUnitario,
+      }
+    }});
+    setRigaPerRicerca(null);
+  }, [rigaPerRicerca, dispatch]);
+
   const handleAddRiga = () => dispatch({ type: 'ADD_RIGA', payload: { categoriaId } });
   const handleUpdateRiga = (id: string, updates: Partial<RigaComputo>) => dispatch({ type: 'UPDATE_RIGA', payload: { id, updates } });
   const handleDeleteRiga = (id: string) => { if (confirm('Sei sicuro di voler eliminare questa riga?')) dispatch({ type: 'DELETE_RIGA', payload: id }); };
@@ -543,6 +541,14 @@ export function TabellaComputo({ categoriaId }: TabellaComputoProps) {
 
   return (
     <div className="space-y-4">
+      {/* MODALE - renderizzata fuori dalla tabella via Portal */}
+      {rigaPerRicerca && (
+        <ModalRicercaPrezzario
+          onSelect={handleVoceSelect}
+          onClose={() => setRigaPerRicerca(null)}
+        />
+      )}
+
       <div className="border rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -580,6 +586,7 @@ export function TabellaComputo({ categoriaId }: TabellaComputoProps) {
                     onAddMisurazione={handleAddMisurazione}
                     onUpdateMisurazione={handleUpdateMisurazione}
                     onDeleteMisurazione={handleDeleteMisurazione}
+                    onOpenRicerca={handleOpenRicerca}
                     isFirst={index === 0}
                     isLast={index === righe.length - 1}
                   />
