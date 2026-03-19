@@ -52,7 +52,10 @@ async function parseCSV(file: File): Promise<{ voci: VocePrezzario[]; errori: st
       const iCodice = headers.findIndex(h => h === 'codice');
       const iUM = headers.findIndex(h => h.includes('unit') && h.includes('misura') || h === 'um' || h === 'u.m.');
       const iPrezzo = headers.findIndex(h => h === 'prezzo' && !h.includes('senza') && !h.includes('unitario'));
-      const iDesc = headers.findIndex(h => h === 'articolo' || h === 'descrizione' || h === 'voce');
+      // Descrizione: priorità Articolo (descrizione specifica completa) > Descrizione > Voce (breve) > Tipologia
+      const iArticolo = headers.findIndex(h => h === 'articolo');
+      const iDescrizioneBase = headers.findIndex(h => h === 'descrizione');
+      const iVoce = headers.findIndex(h => h === 'voce');
       const iTipologia = headers.findIndex(h => h.includes('tipologia') || h.includes('famiglia'));
       const iCapitolo = headers.findIndex(h => h === 'capitolo');
 
@@ -81,9 +84,11 @@ async function parseCSV(file: File): Promise<{ voci: VocePrezzario[]; errori: st
         const codice = iCodice >= 0 ? get(iCodice) : '';
         if (!codice) continue; // salta righe senza codice
 
-        // Descrizione: preferisce Articolo, poi Tipologia/Famiglia, poi Capitolo
+        // Descrizione: priorità Articolo (specifica e completa) > Descrizione > Voce (breve) > Tipologia > Capitolo
         let descrizione = '';
-        if (iDesc >= 0) descrizione = get(iDesc);
+        if (iArticolo >= 0) descrizione = get(iArticolo);
+        if (!descrizione && iDescrizioneBase >= 0) descrizione = get(iDescrizioneBase);
+        if (!descrizione && iVoce >= 0) descrizione = get(iVoce);
         if (!descrizione && iTipologia >= 0) descrizione = get(iTipologia);
         if (!descrizione && iCapitolo >= 0) descrizione = get(iCapitolo);
         if (!descrizione) { errori.push(`Riga ${i + 1}: descrizione mancante`); continue; }
