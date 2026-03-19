@@ -1,17 +1,15 @@
-import { useState, useCallback } from 'react';
+import { useCallback } from 'react';
 import {
   Plus,
   Trash2,
   Copy,
   AlertCircle,
-  ArrowUp,
-  ArrowDown,
+  ChevronDown,
+  ChevronRight,
   Search,
   PlusCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useApp } from '@/store/AppContext';
 import { useRicercaPrezzario } from '@/App';
 import { UNITA_MISURA_FORMULE } from '@/types';
@@ -141,14 +139,10 @@ interface RigaComputoProps {
   onUpdate: (id: string, updates: Partial<RigaComputo>) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
-  onMoveUp?: () => void;
-  onMoveDown?: () => void;
   onAddMisurazione: (rigaId: string) => void;
   onUpdateMisurazione: (rigaId: string, misId: string, updates: Partial<Misurazione>) => void;
   onDeleteMisurazione: (rigaId: string, misId: string) => void;
   onOpenRicerca: (rigaId: string) => void;
-  isFirst?: boolean;
-  isLast?: boolean;
 }
 
 function BloccoVoce({
@@ -157,25 +151,17 @@ function BloccoVoce({
   onUpdate,
   onDelete,
   onDuplicate,
-  onMoveUp,
-  onMoveDown,
   onAddMisurazione,
   onUpdateMisurazione,
   onDeleteMisurazione,
   onOpenRicerca,
-  isFirst,
-  isLast,
 }: RigaComputoProps) {
-  const { validaRiga } = useApp();
-  const validazione = validaRiga(riga);
-  const formula = UNITA_MISURA_FORMULE[riga.unitaMisura];
-
   const descCompleta = riga.note?.startsWith('__desc__') ? riga.note.replace('__desc__', '') : null;
   const noteVisibili = riga.note && !riga.note.startsWith('__desc__') ? riga.note : '';
 
   return (
     <div className="mb-6 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-      {/* HEADER VOCE (Stile PriMus reale: sfondo grigio chiaro, bordo blu sinistro) */}
+      {/* HEADER VOCE */}
       <div className="bg-gray-100/80 border-l-4 border-blue-600 px-4 py-3 flex items-center gap-3">
         <span className="text-sm font-black text-gray-400 w-8">{numero}</span>
         
@@ -232,7 +218,7 @@ function BloccoVoce({
         </div>
       </div>
 
-      {/* AREA DESCRIZIONE ESTESA (se presente) */}
+      {/* AREA DESCRIZIONE ESTESA */}
       {descCompleta && (
         <div className="px-14 py-2 bg-blue-50/30 text-xs text-gray-500 leading-relaxed border-b border-gray-100">
           <p className="line-clamp-2 hover:line-clamp-none cursor-default transition-all">{descCompleta}</p>
@@ -347,17 +333,6 @@ export function TabellaComputo({ categoriaId }: TabellaComputoProps) {
   const handleDeleteMisurazione = (rigaId: string, misurazioneId: string) =>
     dispatch({ type: 'DELETE_MISURAZIONE', payload: { rigaId, misurazioneId } });
 
-  const handleMoveRiga = (index: number, direction: 'up' | 'down') => {
-    if (!state.computoCorrente) return;
-    const newIndex = direction === 'up' ? index - 1 : index + 1;
-    if (newIndex < 0 || newIndex >= righe.length) return;
-
-    const allRighe = [...state.computoCorrente.righe];
-    const indices = allRighe.map((r, i) => ({ r, i })).filter(({ r }) => r.categoriaId === categoriaId).map(({ i }) => i);
-    [allRighe[indices[index]], allRighe[indices[newIndex]]] = [allRighe[indices[newIndex]], allRighe[indices[index]]];
-    dispatch({ type: 'REORDER_RIGHE', payload: allRighe });
-  };
-
   return (
     <div className="py-2">
       {righe.length === 0 ? (
@@ -377,14 +352,10 @@ export function TabellaComputo({ categoriaId }: TabellaComputoProps) {
               onUpdate={handleUpdateRiga}
               onDelete={handleDeleteRiga}
               onDuplicate={handleDuplicateRiga}
-              onMoveUp={() => handleMoveRiga(index, 'up')}
-              onMoveDown={() => handleMoveRiga(index, 'down')}
               onAddMisurazione={handleAddMisurazione}
               onUpdateMisurazione={handleUpdateMisurazione}
               onDeleteMisurazione={handleDeleteMisurazione}
               onOpenRicerca={handleOpenRicerca}
-              isFirst={index === 0}
-              isLast={index === righe.length - 1}
             />
           ))}
           

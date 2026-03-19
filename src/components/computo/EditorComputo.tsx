@@ -1,16 +1,12 @@
 import React, { useState } from 'react';
 import {
-  FolderOpen,
   Plus,
   Trash2,
   Edit2,
-  Save,
-  X,
   ChevronDown,
   ChevronRight,
   Calculator,
   FileDown,
-  Table,
   User,
   LayoutList,
   FileText
@@ -18,7 +14,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useApp } from '@/store/AppContext';
