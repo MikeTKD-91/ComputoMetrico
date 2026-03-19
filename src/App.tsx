@@ -257,9 +257,9 @@ function App() {
       
       <main 
         className={`
-          transition-all duration-300 ease-in-out
           ${state.ui.sidebarOpen ? 'ml-64' : 'ml-16'}
         `}
+        style={{ transition: 'margin-left 0.3s ease-in-out' }}
       >
         <Header />
         <div className="p-6">
