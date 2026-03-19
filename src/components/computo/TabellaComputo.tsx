@@ -2,184 +2,16 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Plus, Trash2, Copy, AlertCircle, Calculator,
   ArrowUp, ArrowDown, Search, PlusCircle, MinusCircle,
-  ChevronDown, ChevronRight, Filter, X,
+  ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useApp } from '@/store/AppContext';
+import { useRicercaPrezzario } from '@/App';
 import { UNITA_MISURA_FORMULE } from '@/types';
 import type { RigaComputo, Misurazione, VocePrezzario, UnitàMisura } from '@/types';
 import { formattaImporto, formattaNumero } from '@/utils/exportUtils';
-
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value);
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedValue(value), delay);
-    return () => clearTimeout(timer);
-  }, [value, delay]);
-  return debouncedValue;
-}
-
-// ============================================================
-// DIALOG RICERCA PREZZARIO  (usa Radix Dialog — Portal nativo)
-// ============================================================
-
-interface DialogRicercaProps {
-  open: boolean;
-  onClose: () => void;
-  onSelect: (voce: VocePrezzario) => void;
-}
-
-function DialogRicercaPrezzario({ open, onClose, onSelect }: DialogRicercaProps) {
-  const { state } = useApp();
-  const [search, setSearch] = useState('');
-  const [filtroUM, setFiltroUM] = useState('');
-  const [filtroCategoria, setFiltroCategoria] = useState('');
-  const debouncedSearch = useDebounce(search, 150);
-
-  // Reset quando si apre
-  useEffect(() => {
-    if (open) { setSearch(''); setFiltroUM(''); setFiltroCategoria(''); }
-  }, [open]);
-
-  const categorie = useMemo(() => {
-    const set = new Set<string>();
-    state.prezzario.forEach(v => { if (v.categoria) set.add(v.categoria); });
-    return Array.from(set).sort();
-  }, [state.prezzario]);
-
-  const unitaMisuraUniche = useMemo(() => {
-    const set = new Set<string>();
-    state.prezzario.forEach(v => set.add(v.unitaMisura));
-    return Array.from(set).sort();
-  }, [state.prezzario]);
-
-  const risultati = useMemo(() => {
-    let voci = state.prezzario;
-    if (filtroUM) voci = voci.filter(v => v.unitaMisura === filtroUM);
-    if (filtroCategoria) voci = voci.filter(v => v.categoria === filtroCategoria);
-    if (debouncedSearch.trim()) {
-      const s = debouncedSearch.toLowerCase();
-      voci = voci.filter(v =>
-        v.codice.toLowerCase().includes(s) ||
-        v.descrizione.toLowerCase().includes(s) ||
-        (v.categoria ?? '').toLowerCase().includes(s)
-      );
-    }
-    return voci.slice(0, 150);
-  }, [state.prezzario, debouncedSearch, filtroUM, filtroCategoria]);
-
-  const handleSelect = (voce: VocePrezzario) => {
-    onSelect(voce);
-    onClose();
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent
-        className="max-w-3xl w-full p-0 gap-0 overflow-hidden"
-        style={{ maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}
-      >
-        <DialogTitle className="sr-only">Ricerca Prezzario</DialogTitle>
-
-        {/* Barra ricerca */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b">
-          <Search className="h-5 w-5 text-gray-400 flex-shrink-0" />
-          <input
-            autoFocus
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Cerca per codice, descrizione, categoria..."
-            className="flex-1 text-base outline-none bg-transparent"
-          />
-          {search && (
-            <button onClick={() => setSearch('')} className="text-gray-400 hover:text-gray-600">
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-
-        {/* Filtri */}
-        <div className="flex items-center gap-2 px-4 py-2 border-b bg-gray-50 flex-wrap">
-          <Filter className="h-3.5 w-3.5 text-gray-400" />
-          <select
-            value={filtroCategoria}
-            onChange={e => setFiltroCategoria(e.target.value)}
-            className="text-xs px-2 py-1 border rounded bg-white max-w-[220px]"
-          >
-            <option value="">Tutte le categorie</option>
-            {categorie.map(c => (
-              <option key={c} value={c}>{c.length > 45 ? c.slice(0, 45) + '…' : c}</option>
-            ))}
-          </select>
-          <select
-            value={filtroUM}
-            onChange={e => setFiltroUM(e.target.value)}
-            className="text-xs px-2 py-1 border rounded bg-white"
-          >
-            <option value="">Tutte le U.M.</option>
-            {unitaMisuraUniche.map(u => <option key={u} value={u}>{u}</option>)}
-          </select>
-          {(filtroCategoria || filtroUM) && (
-            <button
-              onClick={() => { setFiltroCategoria(''); setFiltroUM(''); }}
-              className="text-xs text-red-500 hover:underline"
-            >
-              × Azzera
-            </button>
-          )}
-          <span className="ml-auto text-xs text-gray-400">
-            {risultati.length} voci{risultati.length === 150 ? ' (max 150)' : ''}
-          </span>
-        </div>
-
-        {/* Lista */}
-        <div className="overflow-y-auto flex-1">
-          {state.prezzario.length === 0 ? (
-            <div className="py-16 text-center text-gray-500">
-              <p className="font-medium">Prezzario vuoto</p>
-              <p className="text-sm mt-1">Importa un CSV dal tab Prezzario.</p>
-            </div>
-          ) : risultati.length === 0 ? (
-            <div className="py-16 text-center text-gray-500">
-              <p className="font-medium">Nessun risultato</p>
-              <p className="text-sm mt-1">Prova a modificare la ricerca o i filtri.</p>
-            </div>
-          ) : (
-            risultati.map(voce => (
-              <button
-                key={voce.id}
-                onClick={() => handleSelect(voce)}
-                className="w-full text-left px-4 py-3 border-b hover:bg-blue-50 transition-colors"
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-mono text-sm text-blue-600 font-medium">{voce.codice}</span>
-                  <span className="text-xs px-2 py-0.5 border rounded text-gray-500">{voce.unitaMisura}</span>
-                  {voce.categoria && (
-                    <span className="text-xs text-gray-400 truncate max-w-[200px]">{voce.categoria}</span>
-                  )}
-                  <span className="ml-auto font-semibold text-sm text-gray-800 flex-shrink-0">
-                    € {voce.prezzoUnitario.toFixed(2)}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-700 line-clamp-2 text-left">{voce.descrizione}</p>
-              </button>
-            ))
-          )}
-        </div>
-
-        {/* Footer hint */}
-        <div className="px-4 py-2 border-t bg-gray-50 flex items-center gap-4 text-xs text-gray-400">
-          <span>Clicca una voce per selezionarla</span>
-          <span>·</span>
-          <span>Esc per chiudere</span>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 // ============================================================
 // RIGA MISURAZIONE
@@ -418,22 +250,18 @@ interface TabellaComputoProps {
 
 export function TabellaComputo({ categoriaId }: TabellaComputoProps) {
   const { state, dispatch, getRighePerCategoria, totaliPerCategoria } = useApp();
+  const { apriRicerca } = useRicercaPrezzario();
   const righe = getRighePerCategoria(categoriaId);
   const totaleCategoria = totaliPerCategoria.find(t => t.categoriaId === categoriaId)?.totale || 0;
 
-  // Stato modale ricerca
-  const [rigaAttiva, setRigaAttiva] = useState<string | null>(null);
-
-  const handleOpenRicerca = useCallback((rigaId: string) => setRigaAttiva(rigaId), []);
-
-  const handleVoceSelect = useCallback((voce: VocePrezzario) => {
-    if (!rigaAttiva) return;
-    dispatch({ type: 'UPDATE_RIGA', payload: {
-      id: rigaAttiva,
-      updates: { codice: voce.codice, descrizione: voce.descrizione, unitaMisura: voce.unitaMisura, prezzoUnitario: voce.prezzoUnitario },
-    }});
-    setRigaAttiva(null);
-  }, [rigaAttiva, dispatch]);
+  const handleOpenRicerca = useCallback((rigaId: string) => {
+    apriRicerca((voce) => {
+      dispatch({ type: 'UPDATE_RIGA', payload: {
+        id: rigaId,
+        updates: { codice: voce.codice, descrizione: voce.descrizione, unitaMisura: voce.unitaMisura, prezzoUnitario: voce.prezzoUnitario },
+      }});
+    });
+  }, [apriRicerca, dispatch]);
 
   const handleAddRiga = () => dispatch({ type: 'ADD_RIGA', payload: { categoriaId } });
   const handleUpdateRiga = (id: string, updates: Partial<RigaComputo>) => dispatch({ type: 'UPDATE_RIGA', payload: { id, updates } });
@@ -457,13 +285,6 @@ export function TabellaComputo({ categoriaId }: TabellaComputoProps) {
 
   return (
     <div className="space-y-4">
-      {/* DIALOG RADIX — gestisce Portal, overlay e focus automaticamente */}
-      <DialogRicercaPrezzario
-        open={rigaAttiva !== null}
-        onClose={() => setRigaAttiva(null)}
-        onSelect={handleVoceSelect}
-      />
-
       <div className="border rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
