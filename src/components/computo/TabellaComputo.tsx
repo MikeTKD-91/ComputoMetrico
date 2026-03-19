@@ -1,8 +1,6 @@
 import { useState, useCallback } from 'react';
 import {
-  Plus, Trash2, Copy, AlertCircle, Calculator,
-  ArrowUp, ArrowDown, Search, PlusCircle, MinusCircle,
-  ChevronDown, ChevronRight,
+  Plus, Trash2, Copy, AlertCircle, ArrowUp, ArrowDown, Search, PlusCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,65 +12,103 @@ import type { RigaComputo, Misurazione, UnitàMisura } from '@/types';
 import { formattaImporto, formattaNumero } from '@/utils/exportUtils';
 
 // ============================================================
-// RIGA MISURAZIONE
+// RIGA MISURAZIONE (stile Primus)
 // ============================================================
 
 interface RigaMisurazioneProps {
   misurazione: Misurazione;
   unitaMisura: UnitàMisura;
+  index: number;
   onUpdate: (updates: Partial<Misurazione>) => void;
   onDelete: () => void;
   canDelete: boolean;
 }
 
-function RigaMisurazione({ misurazione, unitaMisura, onUpdate, onDelete, canDelete }: RigaMisurazioneProps) {
+function RigaMisurazione({ misurazione, unitaMisura, index, onUpdate, onDelete, canDelete }: RigaMisurazioneProps) {
   const formula = UNITA_MISURA_FORMULE[unitaMisura];
   const isManuale = !formula.richiedeLunghezza && !formula.richiedeLarghezza && !formula.richiedeAltezza;
   const isNeg = misurazione.segno === -1;
 
   return (
-    <tr className={`text-xs border-b border-gray-100 ${isNeg ? 'bg-red-50' : 'bg-green-50'}`}>
-      <td className="pl-10 pr-1 py-1 w-8">
+    <tr className={`border-b border-gray-100 text-sm ${isNeg ? 'bg-red-50' : index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
+
+      {/* Segno +/- */}
+      <td className="px-2 py-1.5 text-center w-10">
         <button
           onClick={() => onUpdate({ segno: isNeg ? 1 : -1 })}
-          className={`w-6 h-6 rounded font-bold text-sm flex items-center justify-center transition-colors ${isNeg ? 'bg-red-200 text-red-700 hover:bg-red-300' : 'bg-green-200 text-green-700 hover:bg-green-300'}`}
+          className={`w-7 h-7 rounded font-bold text-base flex items-center justify-center mx-auto transition-colors ${isNeg ? 'bg-red-200 text-red-700 hover:bg-red-300' : 'bg-green-200 text-green-700 hover:bg-green-300'}`}
         >
           {isNeg ? '−' : '+'}
         </button>
       </td>
-      <td className="px-1 py-1">
-        <Input value={misurazione.descrizione} onChange={e => onUpdate({ descrizione: e.target.value })} placeholder="es: cucina, bagno..." className="h-7 px-2 text-xs border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-400" />
+
+      {/* Descrizione misurazione */}
+      <td className="px-2 py-1.5">
+        <Input
+          value={misurazione.descrizione}
+          onChange={e => onUpdate({ descrizione: e.target.value })}
+          placeholder="es: piano terra, bagno, detraione finestra..."
+          className="h-8 px-2 text-sm border border-gray-200 bg-white focus:ring-1 focus:ring-blue-400 rounded"
+        />
       </td>
-      <td className={`px-1 py-1 w-20 ${!formula.richiedeLunghezza ? 'bg-gray-100' : ''}`}>
-        {formula.richiedeLunghezza && <Input type="number" value={misurazione.lunghezza ?? ''} onChange={e => onUpdate({ lunghezza: e.target.value ? parseFloat(e.target.value) : null })} placeholder="m" className="h-7 px-2 text-xs border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-400" step="0.01" />}
-      </td>
-      <td className={`px-1 py-1 w-20 ${!formula.richiedeLarghezza ? 'bg-gray-100' : ''}`}>
-        {formula.richiedeLarghezza && <Input type="number" value={misurazione.larghezza ?? ''} onChange={e => onUpdate({ larghezza: e.target.value ? parseFloat(e.target.value) : null })} placeholder="m" className="h-7 px-2 text-xs border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-400" step="0.01" />}
-      </td>
-      <td className={`px-1 py-1 w-20 ${!formula.richiedeAltezza ? 'bg-gray-100' : ''}`}>
-        {formula.richiedeAltezza && <Input type="number" value={misurazione.altezza ?? ''} onChange={e => onUpdate({ altezza: e.target.value ? parseFloat(e.target.value) : null })} placeholder="m" className="h-7 px-2 text-xs border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-400" step="0.01" />}
-      </td>
-      <td className="px-2 py-1 w-24">
-        {isManuale
-          ? <Input type="number" value={misurazione.quantitaParziale || ''} onChange={e => onUpdate({ quantitaParziale: e.target.value ? parseFloat(e.target.value) : 0 })} placeholder="qtà" className="h-7 px-2 text-xs border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-400" step="0.01" />
-          : <div className={`h-7 px-2 flex items-center justify-end text-xs font-medium ${isNeg ? 'text-red-600' : 'text-blue-600'}`}>{isNeg ? '−' : '+'}{formattaNumero(misurazione.quantitaParziale)}</div>
+
+      {/* Lunghezza */}
+      <td className={`px-2 py-1.5 w-24 ${!formula.richiedeLunghezza ? 'bg-gray-100' : ''}`}>
+        {formula.richiedeLunghezza
+          ? <Input type="number" value={misurazione.lunghezza ?? ''} onChange={e => onUpdate({ lunghezza: e.target.value ? parseFloat(e.target.value) : null })} placeholder="0.00" className="h-8 px-2 text-sm text-right border border-gray-200 bg-white focus:ring-1 focus:ring-blue-400 rounded" step="0.01" />
+          : <div className="h-8 flex items-center justify-center text-gray-300 text-xs">—</div>
         }
       </td>
-      <td colSpan={2}></td>
-      <td></td>
-      <td className="px-1 py-1 w-10 text-center">
-        {canDelete && <button onClick={onDelete} className="text-red-400 hover:text-red-600 p-1"><Trash2 className="h-3 w-3" /></button>}
+
+      {/* Larghezza */}
+      <td className={`px-2 py-1.5 w-24 ${!formula.richiedeLarghezza ? 'bg-gray-100' : ''}`}>
+        {formula.richiedeLarghezza
+          ? <Input type="number" value={misurazione.larghezza ?? ''} onChange={e => onUpdate({ larghezza: e.target.value ? parseFloat(e.target.value) : null })} placeholder="0.00" className="h-8 px-2 text-sm text-right border border-gray-200 bg-white focus:ring-1 focus:ring-blue-400 rounded" step="0.01" />
+          : <div className="h-8 flex items-center justify-center text-gray-300 text-xs">—</div>
+        }
+      </td>
+
+      {/* Altezza */}
+      <td className={`px-2 py-1.5 w-24 ${!formula.richiedeAltezza ? 'bg-gray-100' : ''}`}>
+        {formula.richiedeAltezza
+          ? <Input type="number" value={misurazione.altezza ?? ''} onChange={e => onUpdate({ altezza: e.target.value ? parseFloat(e.target.value) : null })} placeholder="0.00" className="h-8 px-2 text-sm text-right border border-gray-200 bg-white focus:ring-1 focus:ring-blue-400 rounded" step="0.01" />
+          : <div className="h-8 flex items-center justify-center text-gray-300 text-xs">—</div>
+        }
+      </td>
+
+      {/* Quantità parziale */}
+      <td className="px-2 py-1.5 w-28">
+        {isManuale
+          ? <Input type="number" value={misurazione.quantitaParziale || ''} onChange={e => onUpdate({ quantitaParziale: e.target.value ? parseFloat(e.target.value) : 0 })} placeholder="0.00" className="h-8 px-2 text-sm text-right border border-gray-200 bg-white focus:ring-1 focus:ring-blue-400 rounded" step="0.01" />
+          : <div className={`h-8 px-2 flex items-center justify-end text-sm font-semibold ${isNeg ? 'text-red-600' : 'text-blue-700'}`}>
+              {isNeg ? '−' : '+'}{formattaNumero(Math.abs(misurazione.quantitaParziale))}
+            </div>
+        }
+      </td>
+
+      {/* Colonne vuote per allineamento con header voce */}
+      <td className="w-28 bg-gray-50/30"></td>
+      <td className="w-28 bg-gray-50/30"></td>
+
+      {/* Elimina riga misurazione */}
+      <td className="px-2 py-1.5 w-10 text-center">
+        {canDelete && (
+          <button onClick={onDelete} className="text-gray-300 hover:text-red-500 transition-colors p-1">
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        )}
       </td>
     </tr>
   );
 }
 
 // ============================================================
-// RIGA COMPUTO
+// BLOCCO VOCE STILE PRIMUS
 // ============================================================
 
 interface RigaComputoProps {
   riga: RigaComputo;
+  numero: number;
   onUpdate: (id: string, updates: Partial<RigaComputo>) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
@@ -86,165 +122,205 @@ interface RigaComputoProps {
   isLast?: boolean;
 }
 
-function RigaComputoComponent({
-  riga, onUpdate, onDelete, onDuplicate, onMoveUp, onMoveDown,
+function BloccoVoce({
+  riga, numero, onUpdate, onDelete, onDuplicate, onMoveUp, onMoveDown,
   onAddMisurazione, onUpdateMisurazione, onDeleteMisurazione, onOpenRicerca, isFirst, isLast,
 }: RigaComputoProps) {
   const { validaRiga } = useApp();
-  const [expanded, setExpanded] = useState(true);
-  const formula = UNITA_MISURA_FORMULE[riga.unitaMisura];
   const validazione = validaRiga(riga);
-  const nMis = riga.misurazioni.length;
-  const hasNeg = riga.misurazioni.some(m => m.segno === -1);
+  const formula = UNITA_MISURA_FORMULE[riga.unitaMisura];
+  // Descrizione completa salvata nelle note con prefisso __desc__
+  const descCompleta = riga.note?.startsWith('__desc__') ? riga.note.replace('__desc__', '') : null;
+  const noteVisibili = riga.note && !riga.note.startsWith('__desc__') ? riga.note : '';
 
   return (
-    <>
-      {/* RIGA PRINCIPALE */}
-      <tr className={`border-b hover:bg-gray-50 transition-colors ${!validazione.valida ? 'bg-red-50' : ''}`}>
+    <div className={`mb-1 border rounded-lg overflow-hidden shadow-sm ${!validazione.valida ? 'border-red-300' : 'border-gray-200'}`}>
 
-        {/* N. + toggle */}
-        <td className="px-2 py-2 text-center text-sm text-gray-500 w-10">
-          <div className="flex flex-col items-center gap-0.5">
-            <span className="font-medium">{riga.numero}</span>
-            <button onClick={() => setExpanded(v => !v)} className="text-gray-400 hover:text-blue-500">
-              {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-            </button>
-          </div>
-        </td>
+      {/* ── INTESTAZIONE VOCE (sfondo blu scuro stile Primus) ── */}
+      <div className="bg-slate-700 text-white px-3 py-2 flex items-start gap-3">
 
-        {/* Codice */}
-        <td className="px-2 py-1 w-36">
-          <Input
-            value={riga.codice}
-            onChange={e => onUpdate(riga.id, { codice: e.target.value })}
-            placeholder="Codice"
-            className="h-8 px-2 text-sm font-mono border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-500"
-          />
-        </td>
+        {/* Numero voce */}
+        <div className="flex-shrink-0 w-8 h-8 bg-slate-500 rounded flex items-center justify-center text-sm font-bold mt-0.5">
+          {numero}
+        </div>
 
-        {/* Descrizione + pulsante RICERCA */}
-        <td className="px-2 py-1 min-w-[200px]">
-          <div className="flex items-start gap-2">
-            <div className="flex-1 min-w-0">
-              <Input
-                value={riga.descrizione}
-                onChange={e => onUpdate(riga.id, { descrizione: e.target.value })}
-                placeholder="Descrizione lavorazione"
-                className="h-8 px-2 text-sm border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-500"
-              />
-              {/* Descrizione completa sotto al campo (solo se presente e diversa dal titolo) */}
-              {riga.note && riga.note.startsWith('__desc__') && (
-                <div className="mt-1 text-xs text-gray-500 bg-blue-50 rounded px-2 py-1 leading-relaxed line-clamp-3">
-                  {riga.note.replace('__desc__', '')}
-                </div>
-              )}
-            </div>
+        {/* Codice + Descrizione */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <Input
+              value={riga.codice}
+              onChange={e => onUpdate(riga.id, { codice: e.target.value })}
+              placeholder="Codice"
+              className="h-7 px-2 text-xs font-mono bg-slate-600 border-slate-500 text-white placeholder-slate-400 focus:bg-slate-500 focus:ring-1 focus:ring-blue-400 rounded w-44"
+            />
+            <select
+              value={riga.unitaMisura}
+              onChange={e => onUpdate(riga.id, { unitaMisura: e.target.value as UnitàMisura })}
+              className="h-7 px-2 text-xs bg-slate-600 border border-slate-500 text-white rounded focus:ring-1 focus:ring-blue-400"
+            >
+              {Object.entries(UNITA_MISURA_FORMULE).map(([key, info]) => (
+                <option key={key} value={key}>{key} — {info.descrizione}</option>
+              ))}
+            </select>
             <Button
               type="button"
-              variant="outline"
               size="sm"
               onClick={() => onOpenRicerca(riga.id)}
-              className="h-8 px-3 text-xs font-medium text-blue-600 border-blue-300 hover:bg-blue-50 flex-shrink-0 gap-1.5 whitespace-nowrap mt-0"
+              className="h-7 px-3 text-xs bg-blue-600 hover:bg-blue-500 border-0 text-white gap-1.5"
             >
-              <Search className="h-3.5 w-3.5" />
+              <Search className="h-3 w-3" />
               Cerca prezzario
             </Button>
+            {!validazione.valida && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div className="text-xs">{validazione.errori.map((e: any, i: number) => <p key={i}>• {e}</p>)}</div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
           </div>
-        </td>
 
-        {/* U.M. */}
-        <td className="px-2 py-1 w-20">
-          <select value={riga.unitaMisura} onChange={e => onUpdate(riga.id, { unitaMisura: e.target.value as UnitàMisura })} className="h-8 px-2 text-sm border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-500 rounded w-full">
-            {Object.entries(UNITA_MISURA_FORMULE).map(([key, info]) => <option key={key} value={key}>{key} - {info.descrizione}</option>)}
-          </select>
-        </td>
+          {/* Descrizione voce (titolo) */}
+          <Input
+            value={riga.descrizione}
+            onChange={e => onUpdate(riga.id, { descrizione: e.target.value })}
+            placeholder="Descrizione lavorazione..."
+            className="h-8 px-2 text-sm font-semibold bg-slate-600 border-slate-500 text-white placeholder-slate-400 focus:bg-slate-500 focus:ring-1 focus:ring-blue-400 rounded w-full"
+          />
 
-        {/* Misure aggregate */}
-        <td className="px-2 py-1 w-24 bg-gray-50 text-center">
-          <span className="text-xs text-gray-400">{nMis} mis.{hasNeg ? ' (±)' : ''}</span>
-        </td>
-        <td className="px-2 py-1 w-24 bg-gray-50"></td>
-        <td className="px-2 py-1 w-24 bg-gray-50"></td>
+          {/* Descrizione completa articolo (se presente) */}
+          {descCompleta && (
+            <div className="mt-1.5 text-xs text-slate-300 leading-relaxed bg-slate-800/50 rounded px-2 py-1.5 border border-slate-600">
+              {descCompleta}
+            </div>
+          )}
+        </div>
 
-        {/* Quantità */}
-        <td className="px-2 py-1 w-24">
-          <div className={`h-8 px-2 text-sm font-bold flex items-center justify-end ${riga.quantita === 0 ? 'text-red-400' : 'text-blue-700'}`}>
-            {formattaNumero(riga.quantita)}
-            {riga.quantita !== 0 && <Calculator className="h-3 w-3 ml-1 text-gray-400" />}
+        {/* Prezzo + Importo + Azioni */}
+        <div className="flex-shrink-0 flex items-start gap-3">
+          <div className="text-right">
+            <div className="text-xs text-slate-400 mb-1">Prezzo unitario</div>
+            <Input
+              type="number"
+              value={riga.prezzoUnitario || ''}
+              onChange={e => onUpdate(riga.id, { prezzoUnitario: parseFloat(e.target.value) || 0 })}
+              placeholder="0.00"
+              className="h-8 px-2 text-sm text-right font-medium bg-slate-600 border-slate-500 text-white placeholder-slate-400 focus:bg-slate-500 focus:ring-1 focus:ring-blue-400 rounded w-28"
+              step="0.01"
+            />
           </div>
-        </td>
-
-        {/* Prezzo */}
-        <td className="px-2 py-1 w-28">
-          <Input type="number" value={riga.prezzoUnitario || ''} onChange={e => onUpdate(riga.id, { prezzoUnitario: parseFloat(e.target.value) || 0 })} placeholder="€" className="h-8 px-2 text-sm border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-500" step="0.01" />
-        </td>
-
-        {/* Importo */}
-        <td className="px-2 py-1 w-28">
-          <div className="h-8 px-2 text-sm font-bold text-right flex items-center justify-end">{formattaImporto(riga.importo)}</div>
-        </td>
-
-        {/* Note */}
-        <td className="px-2 py-1 w-32">
-          <Input value={riga.note || ''} onChange={e => onUpdate(riga.id, { note: e.target.value })} placeholder="Note..." className="h-8 px-2 text-sm border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-500" />
-        </td>
-
-        {/* Azioni */}
-        <td className="px-2 py-1 w-32">
-          <div className="flex items-center justify-center gap-1">
-            <TooltipProvider><Tooltip><TooltipTrigger asChild><Button variant="ghost" size="sm" onClick={() => onDuplicate(riga.id)} className="h-7 w-7 p-0"><Copy className="h-3 w-3" /></Button></TooltipTrigger><TooltipContent>Duplica</TooltipContent></Tooltip></TooltipProvider>
-            {!isFirst && <TooltipProvider><Tooltip><TooltipTrigger asChild><Button variant="ghost" size="sm" onClick={onMoveUp} className="h-7 w-7 p-0"><ArrowUp className="h-3 w-3" /></Button></TooltipTrigger><TooltipContent>Sposta su</TooltipContent></Tooltip></TooltipProvider>}
-            {!isLast && <TooltipProvider><Tooltip><TooltipTrigger asChild><Button variant="ghost" size="sm" onClick={onMoveDown} className="h-7 w-7 p-0"><ArrowDown className="h-3 w-3" /></Button></TooltipTrigger><TooltipContent>Sposta giù</TooltipContent></Tooltip></TooltipProvider>}
-            <TooltipProvider><Tooltip><TooltipTrigger asChild><Button variant="ghost" size="sm" onClick={() => onDelete(riga.id)} className="h-7 w-7 p-0 text-red-500 hover:text-red-700"><Trash2 className="h-3 w-3" /></Button></TooltipTrigger><TooltipContent>Elimina</TooltipContent></Tooltip></TooltipProvider>
-            {!validazione.valida && <TooltipProvider><Tooltip><TooltipTrigger asChild><AlertCircle className="h-4 w-4 text-red-500" /></TooltipTrigger><TooltipContent><div className="text-xs">{validazione.errori.map((e, i) => <p key={i}>• {e}</p>)}</div></TooltipContent></Tooltip></TooltipProvider>}
+          <div className="text-right">
+            <div className="text-xs text-slate-400 mb-1">Importo</div>
+            <div className="h-8 px-3 bg-blue-700 rounded flex items-center justify-end text-white font-bold text-sm w-32">
+              {formattaImporto(riga.importo)}
+            </div>
           </div>
-        </td>
-      </tr>
+          <div className="flex flex-col gap-1 ml-1 mt-5">
+            <TooltipProvider>
+              <Tooltip><TooltipTrigger asChild>
+                <button onClick={() => onDuplicate(riga.id)} className="text-slate-400 hover:text-white p-1"><Copy className="h-3.5 w-3.5" /></button>
+              </TooltipTrigger><TooltipContent>Duplica</TooltipContent></Tooltip>
+            </TooltipProvider>
+            {!isFirst && (
+              <TooltipProvider>
+                <Tooltip><TooltipTrigger asChild>
+                  <button onClick={onMoveUp} className="text-slate-400 hover:text-white p-1"><ArrowUp className="h-3.5 w-3.5" /></button>
+                </TooltipTrigger><TooltipContent>Sposta su</TooltipContent></Tooltip>
+              </TooltipProvider>
+            )}
+            {!isLast && (
+              <TooltipProvider>
+                <Tooltip><TooltipTrigger asChild>
+                  <button onClick={onMoveDown} className="text-slate-400 hover:text-white p-1"><ArrowDown className="h-3.5 w-3.5" /></button>
+                </TooltipTrigger><TooltipContent>Sposta giù</TooltipContent></Tooltip>
+              </TooltipProvider>
+            )}
+            <TooltipProvider>
+              <Tooltip><TooltipTrigger asChild>
+                <button onClick={() => onDelete(riga.id)} className="text-slate-400 hover:text-red-400 p-1"><Trash2 className="h-3.5 w-3.5" /></button>
+              </TooltipTrigger><TooltipContent>Elimina voce</TooltipContent></Tooltip>
+            </TooltipProvider>
+          </div>
+        </div>
+      </div>
 
-      {/* MISURAZIONI */}
-      {expanded && (
-        <>
-          <tr className="bg-gray-50 border-b border-gray-200">
-            <td className="pl-10 py-1 text-xs text-gray-500 font-semibold">±</td>
-            <td className="px-1 py-1 text-xs text-gray-500 font-semibold">Descrizione misurazione</td>
-            <td className={`px-1 py-1 text-xs text-gray-500 font-semibold w-20 text-center ${!formula.richiedeLunghezza ? 'bg-gray-100' : ''}`}>{formula.richiedeLunghezza ? 'Lung. (m)' : ''}</td>
-            <td className={`px-1 py-1 text-xs text-gray-500 font-semibold w-20 text-center ${!formula.richiedeLarghezza ? 'bg-gray-100' : ''}`}>{formula.richiedeLarghezza ? 'Larg. (m)' : ''}</td>
-            <td className={`px-1 py-1 text-xs text-gray-500 font-semibold w-20 text-center ${!formula.richiedeAltezza ? 'bg-gray-100' : ''}`}>{formula.richiedeAltezza ? 'Alt. (m)' : ''}</td>
-            <td className="px-2 py-1 text-xs text-gray-500 font-semibold w-24 text-right">Parziale</td>
-            <td colSpan={4}></td>
+      {/* ── TABELLA MISURAZIONI ── */}
+      <table className="w-full">
+        {/* Header colonne misurazioni */}
+        <thead>
+          <tr className="bg-gray-100 border-b border-gray-200 text-xs text-gray-500 font-semibold">
+            <th className="px-2 py-1.5 text-center w-10">±</th>
+            <th className="px-2 py-1.5 text-left">Descrizione misurazione</th>
+            <th className={`px-2 py-1.5 text-center w-24 ${!formula.richiedeLunghezza ? 'bg-gray-200 text-gray-400' : 'text-gray-600'}`}>
+              {formula.richiedeLunghezza ? 'Lungh. (m)' : '—'}
+            </th>
+            <th className={`px-2 py-1.5 text-center w-24 ${!formula.richiedeLarghezza ? 'bg-gray-200 text-gray-400' : 'text-gray-600'}`}>
+              {formula.richiedeLarghezza ? 'Larg. (m)' : '—'}
+            </th>
+            <th className={`px-2 py-1.5 text-center w-24 ${!formula.richiedeAltezza ? 'bg-gray-200 text-gray-400' : 'text-gray-600'}`}>
+              {formula.richiedeAltezza ? 'Alt. (m)' : '—'}
+            </th>
+            <th className="px-2 py-1.5 text-right w-28 text-gray-600">Parziale</th>
+            <th className="w-28 bg-gray-100"></th>
+            <th className="w-28 bg-gray-100"></th>
+            <th className="w-10"></th>
           </tr>
-
-          {riga.misurazioni.map(mis => (
+        </thead>
+        <tbody>
+          {riga.misurazioni.map((mis, idx) => (
             <RigaMisurazione
               key={mis.id}
               misurazione={mis}
               unitaMisura={riga.unitaMisura}
+              index={idx}
               onUpdate={updates => onUpdateMisurazione(riga.id, mis.id, updates)}
               onDelete={() => onDeleteMisurazione(riga.id, mis.id)}
               canDelete={riga.misurazioni.length > 1}
             />
           ))}
+        </tbody>
 
-          <tr className="bg-gray-50 border-b-2 border-gray-300">
-            <td colSpan={6} className="pl-10 py-1.5">
-              <div className="flex items-center gap-4">
-                <button onClick={() => onAddMisurazione(riga.id)} className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 font-medium">
-                  <PlusCircle className="h-3.5 w-3.5" />Aggiungi misurazione (+)
-                </button>
-                <span className="text-gray-300">|</span>
-                <button onClick={() => onAddMisurazione(riga.id)} className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 font-medium">
-                  <MinusCircle className="h-3.5 w-3.5" />Aggiungi detrazione (−)
-                </button>
+        {/* Footer: aggiungi + totale */}
+        <tfoot>
+          <tr className="bg-gray-50 border-t border-gray-200">
+            <td colSpan={5} className="px-3 py-2">
+              <button
+                onClick={() => onAddMisurazione(riga.id)}
+                className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 font-medium"
+              >
+                <PlusCircle className="h-3.5 w-3.5" />
+                Aggiungi riga di misurazione
+              </button>
+            </td>
+            <td className="px-3 py-2 text-right w-28">
+              <div className="text-sm font-bold text-blue-800">
+                {formattaNumero(riga.quantita)} <span className="text-xs font-normal text-gray-500">{riga.unitaMisura}</span>
               </div>
             </td>
-            <td className="px-2 py-1.5 text-xs font-bold text-right text-blue-800 w-24 whitespace-nowrap">
-              Tot: {formattaNumero(riga.quantita)} {riga.unitaMisura}
+            <td className="px-3 py-2 text-right w-28">
+              <div className="text-xs text-gray-500">Totale quantità</div>
             </td>
-            <td colSpan={4}></td>
+            <td className="px-3 py-2 text-right w-28">
+              <div className="text-sm font-bold text-blue-900">{formattaImporto(riga.importo)}</div>
+            </td>
+            <td className="w-10"></td>
           </tr>
-        </>
-      )}
-    </>
+          {/* Note (se non è __desc__) */}
+          {noteVisibili && (
+            <tr className="bg-amber-50 border-t border-amber-100">
+              <td colSpan={9} className="px-3 py-1.5 text-xs text-amber-800">
+                <span className="font-semibold">Note: </span>{noteVisibili}
+              </td>
+            </tr>
+          )}
+        </tfoot>
+      </table>
+    </div>
   );
 }
 
@@ -264,25 +340,26 @@ export function TabellaComputo({ categoriaId }: TabellaComputoProps) {
 
   const handleOpenRicerca = useCallback((rigaId: string) => {
     apriRicerca((voce) => {
-      // Usa voceBreve come titolo nel campo descrizione, salva il testo completo nelle note con prefisso __desc__
       const titoloBreve = voce.voceBreve?.trim() || voce.descrizione.slice(0, 120);
       const descCompleta = voce.descrizione;
-      dispatch({ type: 'UPDATE_RIGA', payload: {
-        id: rigaId,
-        updates: {
-          codice: voce.codice,
-          descrizione: titoloBreve,
-          unitaMisura: voce.unitaMisura,
-          prezzoUnitario: voce.prezzoUnitario,
-          note: descCompleta !== titoloBreve ? `__desc__${descCompleta}` : undefined,
-        },
-      }});
+      dispatch({
+        type: 'UPDATE_RIGA', payload: {
+          id: rigaId,
+          updates: {
+            codice: voce.codice,
+            descrizione: titoloBreve,
+            unitaMisura: voce.unitaMisura,
+            prezzoUnitario: voce.prezzoUnitario,
+            note: descCompleta !== titoloBreve ? `__desc__${descCompleta}` : undefined,
+          },
+        }
+      });
     });
   }, [apriRicerca, dispatch]);
 
   const handleAddRiga = () => dispatch({ type: 'ADD_RIGA', payload: { categoriaId } });
   const handleUpdateRiga = (id: string, updates: Partial<RigaComputo>) => dispatch({ type: 'UPDATE_RIGA', payload: { id, updates } });
-  const handleDeleteRiga = (id: string) => { if (confirm('Eliminare questa riga?')) dispatch({ type: 'DELETE_RIGA', payload: id }); };
+  const handleDeleteRiga = (id: string) => { if (confirm('Eliminare questa voce?')) dispatch({ type: 'DELETE_RIGA', payload: id }); };
   const handleDuplicateRiga = (id: string) => dispatch({ type: 'DUPLICATE_RIGA', payload: id });
   const handleAddMisurazione = (rigaId: string) => dispatch({ type: 'ADD_MISURAZIONE', payload: { rigaId } });
   const handleUpdateMisurazione = (rigaId: string, misurazioneId: string, updates: Partial<Misurazione>) =>
@@ -301,69 +378,56 @@ export function TabellaComputo({ categoriaId }: TabellaComputoProps) {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="border rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="px-2 py-2 text-xs font-medium text-gray-600 text-center w-10">N.</th>
-                <th className="px-2 py-2 text-xs font-medium text-gray-600 text-left w-36">Codice</th>
-                <th className="px-2 py-2 text-xs font-medium text-gray-600 text-left min-w-[200px]">Descrizione</th>
-                <th className="px-2 py-2 text-xs font-medium text-gray-600 text-left w-20">U.M.</th>
-                <th className="px-2 py-2 text-xs font-medium text-gray-600 text-center w-24">Lung.</th>
-                <th className="px-2 py-2 text-xs font-medium text-gray-600 text-center w-24">Larg.</th>
-                <th className="px-2 py-2 text-xs font-medium text-gray-600 text-center w-24">Alt.</th>
-                <th className="px-2 py-2 text-xs font-medium text-gray-600 text-center w-24">Quant.</th>
-                <th className="px-2 py-2 text-xs font-medium text-gray-600 text-center w-28">Prezzo €</th>
-                <th className="px-2 py-2 text-xs font-medium text-gray-600 text-center w-28">Importo €</th>
-                <th className="px-2 py-2 text-xs font-medium text-gray-600 text-left w-32">Note</th>
-                <th className="px-2 py-2 text-xs font-medium text-gray-600 text-center w-32">Azioni</th>
-              </tr>
-            </thead>
-            <tbody>
-              {righe.length === 0 ? (
-                <tr><td colSpan={12} className="px-4 py-8 text-center text-gray-500">
-                  Nessuna riga. <Button variant="link" onClick={handleAddRiga}>Aggiungi la prima voce</Button>
-                </td></tr>
-              ) : righe.map((riga, index) => (
-                <RigaComputoComponent
-                  key={riga.id}
-                  riga={riga}
-                  onUpdate={handleUpdateRiga}
-                  onDelete={handleDeleteRiga}
-                  onDuplicate={handleDuplicateRiga}
-                  onMoveUp={() => handleMoveRiga(index, 'up')}
-                  onMoveDown={() => handleMoveRiga(index, 'down')}
-                  onAddMisurazione={handleAddMisurazione}
-                  onUpdateMisurazione={handleUpdateMisurazione}
-                  onDeleteMisurazione={handleDeleteMisurazione}
-                  onOpenRicerca={handleOpenRicerca}
-                  isFirst={index === 0}
-                  isLast={index === righe.length - 1}
-                />
-              ))}
-            </tbody>
-            <tfoot className="bg-gray-50 border-t-2 border-gray-300">
-              <tr>
-                <td colSpan={9} className="px-4 py-3 text-right font-medium text-gray-600">Totale Categoria:</td>
-                <td className="px-4 py-3 text-right font-bold text-lg">{formattaImporto(totaleCategoria)}</td>
-                <td colSpan={2}></td>
-              </tr>
-            </tfoot>
-          </table>
+    <div className="space-y-2">
+
+      {/* Lista voci stile Primus */}
+      {righe.length === 0 ? (
+        <div className="border-2 border-dashed border-gray-200 rounded-lg px-4 py-12 text-center text-gray-500">
+          <p className="font-medium text-base mb-1">Nessuna voce nel computo</p>
+          <p className="text-sm mb-4">Aggiungi la prima voce o cercala nel prezzario</p>
+          <Button onClick={handleAddRiga} size="sm">
+            <Plus className="h-4 w-4 mr-2" />Aggiungi voce
+          </Button>
         </div>
-      </div>
+      ) : (
+        righe.map((riga, index) => (
+          <BloccoVoce
+            key={riga.id}
+            riga={riga}
+            numero={index + 1}
+            onUpdate={handleUpdateRiga}
+            onDelete={handleDeleteRiga}
+            onDuplicate={handleDuplicateRiga}
+            onMoveUp={() => handleMoveRiga(index, 'up')}
+            onMoveDown={() => handleMoveRiga(index, 'down')}
+            onAddMisurazione={handleAddMisurazione}
+            onUpdateMisurazione={handleUpdateMisurazione}
+            onDeleteMisurazione={handleDeleteMisurazione}
+            onOpenRicerca={handleOpenRicerca}
+            isFirst={index === 0}
+            isLast={index === righe.length - 1}
+          />
+        ))
+      )}
 
-      <Button onClick={handleAddRiga} variant="outline" className="w-full py-3 border-dashed">
-        <Plus className="h-4 w-4 mr-2" />Aggiungi Voce
-      </Button>
+      {/* Bottone aggiungi voce */}
+      {righe.length > 0 && (
+        <Button onClick={handleAddRiga} variant="outline" className="w-full py-3 border-dashed border-2 text-gray-500 hover:text-blue-600 hover:border-blue-300">
+          <Plus className="h-4 w-4 mr-2" />Aggiungi Voce
+        </Button>
+      )}
 
-      <div className="flex items-center gap-6 text-xs text-gray-500 flex-wrap">
-        <div className="flex items-center gap-1"><div className="w-3 h-3 bg-green-100 border border-green-300 rounded-sm"></div><span>Addizione (+)</span></div>
-        <div className="flex items-center gap-1"><div className="w-3 h-3 bg-red-100 border border-red-300 rounded-sm"></div><span>Detrazione (−)</span></div>
-        <div className="flex items-center gap-1"><Calculator className="h-3 w-3" /><span>Quantità calcolata</span></div>
-      </div>
+      {/* Totale categoria */}
+      {righe.length > 0 && (
+        <div className="flex justify-end pt-2">
+          <div className="bg-slate-800 text-white rounded-lg px-6 py-3 flex items-center gap-6">
+            <span className="text-sm text-slate-300">{righe.length} voci</span>
+            <span className="text-slate-400">|</span>
+            <span className="text-sm text-slate-300">Totale categoria:</span>
+            <span className="text-xl font-bold">{formattaImporto(totaleCategoria)}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
