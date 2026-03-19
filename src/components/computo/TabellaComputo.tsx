@@ -1,18 +1,8 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { 
-  Plus, 
-  Trash2, 
-  Copy, 
-  AlertCircle,
-  Calculator,
-  ArrowUp,
-  ArrowDown,
-  Loader2,
-  Search,
-  PlusCircle,
-  MinusCircle,
-  ChevronDown,
-  ChevronRight,
+import {
+  Plus, Trash2, Copy, AlertCircle, Calculator,
+  ArrowUp, ArrowDown, Search, PlusCircle, MinusCircle,
+  ChevronDown, ChevronRight, X, Filter,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,96 +22,231 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-interface AutocompletePrezzarioProps {
-  value: string;
+// ============================================================
+// MODALE RICERCA PREZZARIO
+// ============================================================
+
+interface ModalRicercaPrezzarioProps {
   onSelect: (voce: VocePrezzario) => void;
-  onChange: (value: string) => void;
-  disabled?: boolean;
+  onClose: () => void;
 }
 
-function AutocompletePrezzario({ value, onSelect, onChange, disabled }: AutocompletePrezzarioProps) {
+function ModalRicercaPrezzario({ onSelect, onClose }: ModalRicercaPrezzarioProps) {
   const { state } = useApp();
-  const [isOpen, setIsOpen] = useState(false);
-  const [filteredVoci, setFilteredVoci] = useState<VocePrezzario[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [highlightedIndex, setHighlightedIndex] = useState(0);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const debouncedSearch = useDebounce(value, 150);
+  const [search, setSearch] = useState('');
+  const [filtroUM, setFiltroUM] = useState('');
+  const [filtroCategoria, setFiltroCategoria] = useState('');
+  const [highlighted, setHighlighted] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const debouncedSearch = useDebounce(search, 120);
 
-  const searchIndex = useMemo(() => {
-    const index = new Map<string, VocePrezzario[]>();
-    state.prezzario.forEach(voce => {
-      const codePrefix = voce.codice.slice(0, 3).toLowerCase();
-      if (!index.has(codePrefix)) index.set(codePrefix, []);
-      index.get(codePrefix)!.push(voce);
-      voce.descrizione.toLowerCase().split(/\s+/).forEach(word => {
-        if (word.length >= 3) {
-          const prefix = word.slice(0, 3);
-          if (!index.has(prefix)) index.set(prefix, []);
-          if (!index.get(prefix)!.includes(voce)) index.get(prefix)!.push(voce);
-        }
-      });
-    });
-    return index;
+  // Focus automatico all'apertura
+  useEffect(() => { inputRef.current?.focus(); }, []);
+
+  // Chiudi con Escape
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  // Categorie uniche
+  const categorie = useMemo(() => {
+    const set = new Set<string>();
+    state.prezzario.forEach(v => { if (v.categoria) set.add(v.categoria); });
+    return Array.from(set).sort();
   }, [state.prezzario]);
 
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setIsOpen(false);
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  // Unità uniche
+  const unitaMisuraUniche = useMemo(() => {
+    const set = new Set<string>();
+    state.prezzario.forEach(v => set.add(v.unitaMisura));
+    return Array.from(set).sort();
+  }, [state.prezzario]);
 
-  useEffect(() => {
-    if (debouncedSearch.length >= 2) {
-      setIsSearching(true);
-      requestAnimationFrame(() => {
-        const searchTerm = debouncedSearch.toLowerCase();
-        let candidates = searchIndex.get(searchTerm.slice(0, 3)) || state.prezzario;
-        if (candidates.length < 50) candidates = state.prezzario;
-        const filtered = candidates.filter(v => v.codice.toLowerCase().includes(searchTerm) || v.descrizione.toLowerCase().includes(searchTerm)).slice(0, 20);
-        setFilteredVoci(filtered);
-        setHighlightedIndex(0);
-        setIsOpen(filtered.length > 0);
-        setIsSearching(false);
-      });
-    } else { setIsOpen(false); setIsSearching(false); }
-  }, [debouncedSearch, state.prezzario, searchIndex]);
+  // Risultati filtrati
+  const risultati = useMemo(() => {
+    let voci = state.prezzario;
+    if (filtroUM) voci = voci.filter(v => v.unitaMisura === filtroUM);
+    if (filtroCategoria) voci = voci.filter(v => v.categoria === filtroCategoria);
+    if (debouncedSearch.trim().length >= 1) {
+      const s = debouncedSearch.toLowerCase();
+      voci = voci.filter(v =>
+        v.codice.toLowerCase().includes(s) ||
+        v.descrizione.toLowerCase().includes(s) ||
+        (v.categoria ?? '').toLowerCase().includes(s)
+      );
+    }
+    return voci.slice(0, 100);
+  }, [state.prezzario, debouncedSearch, filtroUM, filtroCategoria]);
 
-  const handleSelect = useCallback((voce: VocePrezzario) => { onSelect(voce); setIsOpen(false); }, [onSelect]);
+  // Reset highlighted quando cambiano i risultati
+  useEffect(() => { setHighlighted(0); }, [risultati]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!isOpen) return;
-    if (e.key === 'ArrowDown') { e.preventDefault(); setHighlightedIndex(i => Math.min(filteredVoci.length - 1, i + 1)); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); setHighlightedIndex(i => Math.max(0, i - 1)); }
-    else if (e.key === 'Enter') { e.preventDefault(); if (filteredVoci[highlightedIndex]) handleSelect(filteredVoci[highlightedIndex]); }
-    else if (e.key === 'Escape') setIsOpen(false);
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlighted(i => Math.min(risultati.length - 1, i + 1));
+      // scroll
+      const el = listRef.current?.children[highlighted + 1] as HTMLElement;
+      el?.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlighted(i => Math.max(0, i - 1));
+      const el = listRef.current?.children[highlighted - 1] as HTMLElement;
+      el?.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (risultati[highlighted]) { onSelect(risultati[highlighted]); onClose(); }
+    }
+  };
+
+  const handleSelect = (voce: VocePrezzario) => { onSelect(voce); onClose(); };
+
+  // Evidenzia il testo cercato
+  const highlight = (text: string, query: string) => {
+    if (!query.trim()) return text;
+    const idx = text.toLowerCase().indexOf(query.toLowerCase());
+    if (idx === -1) return text;
+    return (
+      <>
+        {text.slice(0, idx)}
+        <mark style={{ background: '#FEF08A', borderRadius: 2, padding: '0 1px' }}>{text.slice(idx, idx + query.length)}</mark>
+        {text.slice(idx + query.length)}
+      </>
+    );
   };
 
   return (
-    <div ref={containerRef} className="relative">
-      <div className="relative">
-        <Input value={value} onChange={(e) => onChange(e.target.value)} onFocus={() => debouncedSearch.length >= 2 && filteredVoci.length > 0 && setIsOpen(true)} onKeyDown={handleKeyDown} placeholder="Cerca codice o descrizione..." disabled={disabled} className="w-full pr-8" />
-        <div className="absolute right-2 top-1/2 -translate-y-1/2">{isSearching ? <Loader2 className="h-4 w-4 text-gray-400 animate-spin" /> : <Search className="h-4 w-4 text-gray-400" />}</div>
-      </div>
-      {isOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-80 overflow-auto">
-          <div className="sticky top-0 bg-gray-100 px-3 py-1 text-xs text-gray-500 border-b">{filteredVoci.length} risultati</div>
-          {filteredVoci.map((voce, index) => (
-            <button key={voce.id} onClick={() => handleSelect(voce)} onMouseEnter={() => setHighlightedIndex(index)} className={`w-full px-3 py-2 text-left border-b last:border-b-0 transition-colors ${index === highlightedIndex ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-              <div className="flex items-center justify-between"><span className="font-mono text-sm text-blue-600">{voce.codice}</span><Badge variant="outline" className="text-xs">{voce.unitaMisura}</Badge></div>
-              <p className="text-sm text-gray-700 truncate">{voce.descrizione}</p>
-              <p className="text-xs text-gray-500">€{voce.prezzoUnitario.toFixed(2)}</p>
-            </button>
-          ))}
+    /* Overlay */
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      {/* Pannello */}
+      <div style={{ background: 'var(--color-background-primary)', borderRadius: 'var(--border-radius-lg)', border: '0.5px solid var(--color-border-tertiary)', width: '100%', maxWidth: 760, maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+        {/* Header */}
+        <div style={{ padding: '14px 16px', borderBottom: '0.5px solid var(--color-border-tertiary)', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Search style={{ width: 18, height: 18, color: 'var(--color-text-secondary)', flexShrink: 0 }} />
+          <input
+            ref={inputRef}
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Cerca per codice, descrizione, categoria..."
+            style={{ flex: 1, border: 'none', outline: 'none', fontSize: 15, background: 'transparent', color: 'var(--color-text-primary)' }}
+          />
+          <button onClick={onClose} style={{ padding: 4, borderRadius: 6, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--color-text-secondary)', display: 'flex' }}>
+            <X style={{ width: 18, height: 18 }} />
+          </button>
         </div>
-      )}
+
+        {/* Filtri */}
+        <div style={{ padding: '8px 16px', borderBottom: '0.5px solid var(--color-border-tertiary)', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', background: 'var(--color-background-secondary)' }}>
+          <Filter style={{ width: 13, height: 13, color: 'var(--color-text-secondary)' }} />
+          <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Filtri:</span>
+
+          <select
+            value={filtroCategoria}
+            onChange={e => setFiltroCategoria(e.target.value)}
+            style={{ fontSize: 12, padding: '3px 8px', border: '0.5px solid var(--color-border-secondary)', borderRadius: 6, background: 'var(--color-background-primary)', color: 'var(--color-text-primary)', cursor: 'pointer' }}
+          >
+            <option value="">Tutte le categorie</option>
+            {categorie.map(c => <option key={c} value={c}>{c.length > 40 ? c.slice(0, 40) + '…' : c}</option>)}
+          </select>
+
+          <select
+            value={filtroUM}
+            onChange={e => setFiltroUM(e.target.value)}
+            style={{ fontSize: 12, padding: '3px 8px', border: '0.5px solid var(--color-border-secondary)', borderRadius: 6, background: 'var(--color-background-primary)', color: 'var(--color-text-primary)', cursor: 'pointer' }}
+          >
+            <option value="">Tutte le U.M.</option>
+            {unitaMisuraUniche.map(u => <option key={u} value={u}>{u}</option>)}
+          </select>
+
+          {(filtroCategoria || filtroUM || search) && (
+            <button
+              onClick={() => { setFiltroCategoria(''); setFiltroUM(''); setSearch(''); }}
+              style={{ fontSize: 12, color: '#A32D2D', border: 'none', background: 'transparent', cursor: 'pointer', padding: '2px 6px', borderRadius: 4 }}
+            >
+              × Azzera filtri
+            </button>
+          )}
+
+          <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--color-text-secondary)' }}>
+            {risultati.length} {risultati.length === 100 ? '(max 100)' : ''}  voci
+          </span>
+        </div>
+
+        {/* Lista risultati */}
+        <div ref={listRef} style={{ overflowY: 'auto', flex: 1 }}>
+          {state.prezzario.length === 0 ? (
+            <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>
+              <p style={{ fontWeight: 500 }}>Prezzario vuoto</p>
+              <p style={{ fontSize: 13, marginTop: 4 }}>Importa prima un CSV dal tab Prezzario.</p>
+            </div>
+          ) : risultati.length === 0 ? (
+            <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+              <p style={{ fontWeight: 500 }}>Nessun risultato</p>
+              <p style={{ fontSize: 13, marginTop: 4 }}>Prova a modificare la ricerca o i filtri.</p>
+            </div>
+          ) : (
+            risultati.map((voce, idx) => (
+              <button
+                key={voce.id}
+                onClick={() => handleSelect(voce)}
+                onMouseEnter={() => setHighlighted(idx)}
+                style={{
+                  width: '100%', textAlign: 'left', padding: '10px 16px',
+                  borderBottom: '0.5px solid var(--color-border-tertiary)',
+                  background: idx === highlighted ? 'var(--color-background-info)' : 'transparent',
+                  border: 'none', cursor: 'pointer', display: 'block',
+                  transition: 'background 0.1s',
+                }}
+              >
+                {/* Riga 1: codice + UM + prezzo */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: '#185FA5', fontWeight: 500, flexShrink: 0 }}>
+                    {highlight(voce.codice, search)}
+                  </span>
+                  <span style={{ fontSize: 11, padding: '1px 6px', borderRadius: 4, border: '0.5px solid var(--color-border-secondary)', color: 'var(--color-text-secondary)', flexShrink: 0 }}>
+                    {voce.unitaMisura}
+                  </span>
+                  {voce.categoria && (
+                    <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                      {voce.categoria.length > 50 ? voce.categoria.slice(0, 50) + '…' : voce.categoria}
+                    </span>
+                  )}
+                  <span style={{ marginLeft: 'auto', fontWeight: 500, fontSize: 13, color: 'var(--color-text-primary)', flexShrink: 0 }}>
+                    € {voce.prezzoUnitario.toFixed(2)}
+                  </span>
+                </div>
+                {/* Riga 2: descrizione */}
+                <div style={{ fontSize: 13, color: 'var(--color-text-primary)', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                  {highlight(voce.descrizione, search)}
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding: '8px 16px', borderTop: '0.5px solid var(--color-border-tertiary)', background: 'var(--color-background-secondary)', display: 'flex', alignItems: 'center', gap: 12, fontSize: 12, color: 'var(--color-text-secondary)' }}>
+          <span>↑↓ naviga</span>
+          <span>Enter seleziona</span>
+          <span>Esc chiudi</span>
+        </div>
+      </div>
     </div>
   );
 }
 
-// ---- RIGA MISURAZIONE ----
+// ============================================================
+// RIGA MISURAZIONE
+// ============================================================
 
 interface RigaMisurazioneProps {
   misurazione: Misurazione;
@@ -174,7 +299,9 @@ function RigaMisurazione({ misurazione, unitaMisura, onUpdate, onDelete, canDele
   );
 }
 
-// ---- RIGA COMPUTO ----
+// ============================================================
+// RIGA COMPUTO
+// ============================================================
 
 interface RigaComputoProps {
   riga: RigaComputo;
@@ -190,26 +317,40 @@ interface RigaComputoProps {
   isLast?: boolean;
 }
 
-function RigaComputoComponent({ riga, onUpdate, onDelete, onDuplicate, onMoveUp, onMoveDown, onAddMisurazione, onUpdateMisurazione, onDeleteMisurazione, isFirst, isLast }: RigaComputoProps) {
+function RigaComputoComponent({
+  riga, onUpdate, onDelete, onDuplicate, onMoveUp, onMoveDown,
+  onAddMisurazione, onUpdateMisurazione, onDeleteMisurazione, isFirst, isLast,
+}: RigaComputoProps) {
   const { state, validaRiga } = useApp();
-  const [showAutocomplete, setShowAutocomplete] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const [expanded, setExpanded] = useState(true);
   const formula = UNITA_MISURA_FORMULE[riga.unitaMisura];
   const validazione = validaRiga(riga);
   const nMis = riga.misurazioni.length;
   const hasNeg = riga.misurazioni.some(m => m.segno === -1);
 
-  const handleVoceSelect = (voce: VocePrezzario) => {
-    onUpdate(riga.id, { codice: voce.codice, descrizione: voce.descrizione, unitaMisura: voce.unitaMisura, prezzoUnitario: voce.prezzoUnitario });
-    setShowAutocomplete(false);
-  };
-
-
+  const handleVoceSelect = useCallback((voce: VocePrezzario) => {
+    onUpdate(riga.id, {
+      codice: voce.codice,
+      descrizione: voce.descrizione,
+      unitaMisura: voce.unitaMisura,
+      prezzoUnitario: voce.prezzoUnitario,
+    });
+  }, [riga.id, onUpdate]);
 
   return (
     <>
+      {/* MODALE RICERCA */}
+      {showModal && (
+        <ModalRicercaPrezzario
+          onSelect={handleVoceSelect}
+          onClose={() => setShowModal(false)}
+        />
+      )}
+
       {/* RIGA PRINCIPALE */}
       <tr className={`border-b hover:bg-gray-50 transition-colors ${!validazione.valida ? 'bg-red-50' : ''}`}>
+        {/* N. + toggle */}
         <td className="px-2 py-2 text-center text-sm text-gray-500 w-10">
           <div className="flex flex-col items-center gap-0.5">
             <span className="font-medium">{riga.numero}</span>
@@ -218,54 +359,101 @@ function RigaComputoComponent({ riga, onUpdate, onDelete, onDuplicate, onMoveUp,
             </button>
           </div>
         </td>
-        <td className="px-2 py-1 w-32">
-          {showAutocomplete ? (
-            <div className="relative">
-              <AutocompletePrezzario value={riga.codice} onSelect={handleVoceSelect} onChange={(val) => onUpdate(riga.id, { codice: val })} />
-              <button onClick={() => setShowAutocomplete(false)} className="absolute right-1 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">×</button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1">
-              <Input value={riga.codice} onChange={(e) => onUpdate(riga.id, { codice: e.target.value })} placeholder="Codice" className="h-8 px-2 py-1 text-sm font-mono border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-500" />
-              {state.prezzario.length > 0 && <Button variant="ghost" size="sm" onClick={() => setShowAutocomplete(true)} className="h-6 w-6 p-0" title="Cerca nel prezzario"><Calculator className="h-3 w-3" /></Button>}
-            </div>
-          )}
+
+        {/* Codice + pulsante apri modale */}
+        <td className="px-2 py-1 w-36">
+          <div className="flex items-center gap-1">
+            <Input
+              value={riga.codice}
+              onChange={(e) => onUpdate(riga.id, { codice: e.target.value })}
+              placeholder="Codice"
+              className="h-8 px-2 py-1 text-sm font-mono border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-500"
+            />
+            {state.prezzario.length > 0 && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost" size="sm"
+                      onClick={() => setShowModal(true)}
+                      className="h-7 w-7 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50 flex-shrink-0"
+                    >
+                      <Search className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent><p>Cerca nel prezzario</p></TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
         </td>
+
+        {/* Descrizione */}
         <td className="px-2 py-1 min-w-[200px]">
-          <Input value={riga.descrizione} onChange={(e) => onUpdate(riga.id, { descrizione: e.target.value })} placeholder="Descrizione lavorazione" className="h-8 px-2 py-1 text-sm border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-500" />
+          <div className="flex items-center gap-1">
+            <Input
+              value={riga.descrizione}
+              onChange={(e) => onUpdate(riga.id, { descrizione: e.target.value })}
+              placeholder={state.prezzario.length > 0 ? 'Descrizione (o cerca con 🔍)' : 'Descrizione lavorazione'}
+              className="h-8 px-2 py-1 text-sm border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-500"
+            />
+            {/* Secondo pulsante ricerca sulla descrizione (più visibile) */}
+            {state.prezzario.length > 0 && (
+              <Button
+                variant="outline" size="sm"
+                onClick={() => setShowModal(true)}
+                className="h-7 px-2 text-xs text-blue-600 border-blue-200 hover:bg-blue-50 flex-shrink-0 gap-1"
+              >
+                <Search className="h-3 w-3" />
+                Prezzario
+              </Button>
+            )}
+          </div>
         </td>
+
+        {/* U.M. */}
         <td className="px-2 py-1 w-20">
           <select value={riga.unitaMisura} onChange={(e) => onUpdate(riga.id, { unitaMisura: e.target.value as UnitàMisura })} className="h-8 px-2 py-1 text-sm border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-500 rounded">
             {Object.entries(UNITA_MISURA_FORMULE).map(([key, info]) => <option key={key} value={key}>{key} - {info.descrizione}</option>)}
           </select>
         </td>
-        {/* Colonne misure - mostrano info aggregate */}
+
+        {/* Colonne misure aggregate */}
         <td className="px-2 py-1 w-24 bg-gray-50 text-center">
           <span className="text-xs text-gray-500">{nMis} mis.{hasNeg ? ' (±)' : ''}</span>
         </td>
         <td className="px-2 py-1 w-24 bg-gray-50"></td>
         <td className="px-2 py-1 w-24 bg-gray-50"></td>
-        {/* Quantità calcolata */}
+
+        {/* Quantità */}
         <td className="px-2 py-1 w-24">
           <div className={`h-8 px-2 py-1 text-sm font-bold flex items-center justify-end ${riga.quantita === 0 ? 'text-red-500' : 'text-blue-700'}`}>
             {formattaNumero(riga.quantita)}{riga.quantita !== 0 && <Calculator className="h-3 w-3 ml-1 text-gray-400" />}
           </div>
         </td>
+
+        {/* Prezzo */}
         <td className="px-2 py-1 w-28">
           <Input type="number" value={riga.prezzoUnitario || ''} onChange={(e) => onUpdate(riga.id, { prezzoUnitario: parseFloat(e.target.value) || 0 })} placeholder="€" className="h-8 px-2 py-1 text-sm border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-500" step="0.01" />
         </td>
+
+        {/* Importo */}
         <td className="px-2 py-1 w-28">
           <div className="h-8 px-2 py-1 text-sm font-bold text-right flex items-center justify-end">{formattaImporto(riga.importo)}</div>
         </td>
+
+        {/* Note */}
         <td className="px-2 py-1 w-32">
           <Input value={riga.note || ''} onChange={(e) => onUpdate(riga.id, { note: e.target.value })} placeholder="Note..." className="h-8 px-2 py-1 text-sm border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-500" />
         </td>
+
+        {/* Azioni */}
         <td className="px-2 py-1 w-32">
           <div className="flex items-center justify-center gap-1">
-            <TooltipProvider><Tooltip><TooltipTrigger asChild><Button variant="ghost" size="sm" onClick={() => onDuplicate(riga.id)} className="h-7 w-7 p-0"><Copy className="h-3 w-3" /></Button></TooltipTrigger><TooltipContent><p>Duplica riga</p></TooltipContent></Tooltip></TooltipProvider>
+            <TooltipProvider><Tooltip><TooltipTrigger asChild><Button variant="ghost" size="sm" onClick={() => onDuplicate(riga.id)} className="h-7 w-7 p-0"><Copy className="h-3 w-3" /></Button></TooltipTrigger><TooltipContent><p>Duplica</p></TooltipContent></Tooltip></TooltipProvider>
             {!isFirst && <TooltipProvider><Tooltip><TooltipTrigger asChild><Button variant="ghost" size="sm" onClick={onMoveUp} className="h-7 w-7 p-0"><ArrowUp className="h-3 w-3" /></Button></TooltipTrigger><TooltipContent><p>Sposta su</p></TooltipContent></Tooltip></TooltipProvider>}
             {!isLast && <TooltipProvider><Tooltip><TooltipTrigger asChild><Button variant="ghost" size="sm" onClick={onMoveDown} className="h-7 w-7 p-0"><ArrowDown className="h-3 w-3" /></Button></TooltipTrigger><TooltipContent><p>Sposta giù</p></TooltipContent></Tooltip></TooltipProvider>}
-            <TooltipProvider><Tooltip><TooltipTrigger asChild><Button variant="ghost" size="sm" onClick={() => onDelete(riga.id)} className="h-7 w-7 p-0 text-red-500 hover:text-red-700"><Trash2 className="h-3 w-3" /></Button></TooltipTrigger><TooltipContent><p>Elimina riga</p></TooltipContent></Tooltip></TooltipProvider>
+            <TooltipProvider><Tooltip><TooltipTrigger asChild><Button variant="ghost" size="sm" onClick={() => onDelete(riga.id)} className="h-7 w-7 p-0 text-red-500 hover:text-red-700"><Trash2 className="h-3 w-3" /></Button></TooltipTrigger><TooltipContent><p>Elimina</p></TooltipContent></Tooltip></TooltipProvider>
             {!validazione.valida && <TooltipProvider><Tooltip><TooltipTrigger asChild><AlertCircle className="h-4 w-4 text-red-500" /></TooltipTrigger><TooltipContent><div className="text-xs">{validazione.errori.map((e, i) => <p key={i}>• {e}</p>)}</div></TooltipContent></Tooltip></TooltipProvider>}
           </div>
         </td>
@@ -274,13 +462,12 @@ function RigaComputoComponent({ riga, onUpdate, onDelete, onDuplicate, onMoveUp,
       {/* MISURAZIONI ESPANSE */}
       {expanded && (
         <>
-          {/* Header sub-righe */}
           <tr className="bg-gray-50 border-b border-gray-200">
             <td className="pl-10 py-1 text-xs text-gray-500 font-semibold">±</td>
             <td className="px-1 py-1 text-xs text-gray-500 font-semibold">Descrizione misurazione</td>
-            <td className={`px-1 py-1 text-xs text-gray-500 font-semibold w-20 text-center ${!formula.richiedeLunghezza ? 'bg-gray-100 text-gray-300' : ''}`}>{formula.richiedeLunghezza ? 'Lung. (m)' : ''}</td>
-            <td className={`px-1 py-1 text-xs text-gray-500 font-semibold w-20 text-center ${!formula.richiedeLarghezza ? 'bg-gray-100 text-gray-300' : ''}`}>{formula.richiedeLarghezza ? 'Larg. (m)' : ''}</td>
-            <td className={`px-1 py-1 text-xs text-gray-500 font-semibold w-20 text-center ${!formula.richiedeAltezza ? 'bg-gray-100 text-gray-300' : ''}`}>{formula.richiedeAltezza ? 'Alt. (m)' : ''}</td>
+            <td className={`px-1 py-1 text-xs text-gray-500 font-semibold w-20 text-center ${!formula.richiedeLunghezza ? 'bg-gray-100' : ''}`}>{formula.richiedeLunghezza ? 'Lung. (m)' : ''}</td>
+            <td className={`px-1 py-1 text-xs text-gray-500 font-semibold w-20 text-center ${!formula.richiedeLarghezza ? 'bg-gray-100' : ''}`}>{formula.richiedeLarghezza ? 'Larg. (m)' : ''}</td>
+            <td className={`px-1 py-1 text-xs text-gray-500 font-semibold w-20 text-center ${!formula.richiedeAltezza ? 'bg-gray-100' : ''}`}>{formula.richiedeAltezza ? 'Alt. (m)' : ''}</td>
             <td className="px-2 py-1 text-xs text-gray-500 font-semibold w-24 text-right">Parziale</td>
             <td colSpan={4}></td>
           </tr>
@@ -296,26 +483,15 @@ function RigaComputoComponent({ riga, onUpdate, onDelete, onDuplicate, onMoveUp,
             />
           ))}
 
-          {/* Footer misurazioni: aggiungi + totale */}
           <tr className="bg-gray-50 border-b-2 border-gray-300">
             <td colSpan={6} className="pl-10 py-1.5">
               <div className="flex items-center gap-4">
                 <button onClick={() => onAddMisurazione(riga.id)} className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 font-medium">
-                  <PlusCircle className="h-3.5 w-3.5" />
-                  Aggiungi misurazione (+)
+                  <PlusCircle className="h-3.5 w-3.5" />Aggiungi misurazione (+)
                 </button>
                 <span className="text-gray-300">|</span>
-                <button
-                  onClick={() => {
-                    // Add then immediately set to negative via a custom event
-                    // We dispatch ADD then the user can click − on the new row
-                    onAddMisurazione(riga.id);
-                  }}
-                  className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 font-medium"
-                  title="Aggiunge una riga, poi clicca − per renderla detrazione"
-                >
-                  <MinusCircle className="h-3.5 w-3.5" />
-                  Aggiungi detrazione (−)
+                <button onClick={() => onAddMisurazione(riga.id)} className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 font-medium" title="Aggiungi poi clicca − per renderla detrazione">
+                  <MinusCircle className="h-3.5 w-3.5" />Aggiungi detrazione (−)
                 </button>
               </div>
             </td>
@@ -330,7 +506,9 @@ function RigaComputoComponent({ riga, onUpdate, onDelete, onDuplicate, onMoveUp,
   );
 }
 
-// ---- TABELLA PRINCIPALE ----
+// ============================================================
+// TABELLA PRINCIPALE
+// ============================================================
 
 interface TabellaComputoProps {
   categoriaId: string;
@@ -370,7 +548,7 @@ export function TabellaComputo({ categoriaId }: TabellaComputoProps) {
             <thead className="bg-gray-100">
               <tr>
                 <th className="px-2 py-2 text-xs font-medium text-gray-600 text-center w-10">N.</th>
-                <th className="px-2 py-2 text-xs font-medium text-gray-600 text-left w-32">Codice</th>
+                <th className="px-2 py-2 text-xs font-medium text-gray-600 text-left w-36">Codice</th>
                 <th className="px-2 py-2 text-xs font-medium text-gray-600 text-left min-w-[200px]">Descrizione</th>
                 <th className="px-2 py-2 text-xs font-medium text-gray-600 text-left w-20">U.M.</th>
                 <th className="px-2 py-2 text-xs font-medium text-gray-600 text-center w-24">Lung. (m)</th>
@@ -385,7 +563,9 @@ export function TabellaComputo({ categoriaId }: TabellaComputoProps) {
             </thead>
             <tbody>
               {righe.length === 0 ? (
-                <tr><td colSpan={12} className="px-4 py-8 text-center text-gray-500">Nessuna riga. <Button variant="link" onClick={handleAddRiga} className="ml-2">Aggiungi la prima voce</Button></td></tr>
+                <tr><td colSpan={12} className="px-4 py-8 text-center text-gray-500">
+                  Nessuna riga. <Button variant="link" onClick={handleAddRiga} className="ml-2">Aggiungi la prima voce</Button>
+                </td></tr>
               ) : (
                 righe.map((riga, index) => (
                   <RigaComputoComponent
@@ -417,15 +597,14 @@ export function TabellaComputo({ categoriaId }: TabellaComputoProps) {
       </div>
 
       <Button onClick={handleAddRiga} variant="outline" className="w-full py-3 border-dashed">
-        <Plus className="h-4 w-4 mr-2" />
-        Aggiungi Voce
+        <Plus className="h-4 w-4 mr-2" />Aggiungi Voce
       </Button>
 
       <div className="flex items-center gap-6 text-xs text-gray-500 flex-wrap">
         <div className="flex items-center gap-1"><div className="w-3 h-3 bg-green-100 border border-green-300 rounded-sm"></div><span>Addizione (+)</span></div>
         <div className="flex items-center gap-1"><div className="w-3 h-3 bg-red-100 border border-red-300 rounded-sm"></div><span>Detrazione (−)</span></div>
         <div className="flex items-center gap-1"><Calculator className="h-3 w-3" /><span>Quantità calcolata</span></div>
-        <div className="flex items-center gap-1"><ChevronDown className="h-3 w-3" /><span>Espandi/comprimi misurazioni</span></div>
+        <div className="flex items-center gap-1"><Search className="h-3 w-3 text-blue-500" /><span>Cerca nel prezzario con il pulsante "Prezzario"</span></div>
       </div>
     </div>
   );
