@@ -121,24 +121,7 @@ function createEmptyMisurazione(): Misurazione {
   };
 }
 
-function calculateQuantita(
-  unitaMisura: UnitàMisura,
-  lunghezza: number | null,
-  larghezza: number | null,
-  altezza: number | null
-): number {
-  const formula = UNITA_MISURA_FORMULE[unitaMisura];
-  if (formula.richiedeLunghezza || formula.richiedeLarghezza || formula.richiedeAltezza) {
-    const l = lunghezza ?? 0;
-    const la = larghezza ?? 0;
-    const a = altezza ?? 0;
-    if (formula.richiedeLunghezza && l === 0) return 0;
-    if (formula.richiedeLarghezza && la === 0) return 0;
-    if (formula.richiedeAltezza && a === 0) return 0;
-    return formula.formula(l, la, a);
-  }
-  return 0;
-}
+
 
 function createEmptyRiga(categoriaId: string, numero: number): RigaComputo {
   return {
