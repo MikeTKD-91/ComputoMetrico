@@ -124,19 +124,27 @@ function RigaComputoComponent({
 
         {/* Descrizione + pulsante RICERCA */}
         <td className="px-2 py-1 min-w-[200px]">
-          <div className="flex items-center gap-2">
-            <Input
-              value={riga.descrizione}
-              onChange={e => onUpdate(riga.id, { descrizione: e.target.value })}
-              placeholder="Descrizione lavorazione"
-              className="h-8 px-2 text-sm border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-500"
-            />
+          <div className="flex items-start gap-2">
+            <div className="flex-1 min-w-0">
+              <Input
+                value={riga.descrizione}
+                onChange={e => onUpdate(riga.id, { descrizione: e.target.value })}
+                placeholder="Descrizione lavorazione"
+                className="h-8 px-2 text-sm border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-500"
+              />
+              {/* Descrizione completa sotto al campo (solo se presente e diversa dal titolo) */}
+              {riga.note && riga.note.startsWith('__desc__') && (
+                <div className="mt-1 text-xs text-gray-500 bg-blue-50 rounded px-2 py-1 leading-relaxed line-clamp-3">
+                  {riga.note.replace('__desc__', '')}
+                </div>
+              )}
+            </div>
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => onOpenRicerca(riga.id)}
-              className="h-8 px-3 text-xs font-medium text-blue-600 border-blue-300 hover:bg-blue-50 flex-shrink-0 gap-1.5 whitespace-nowrap"
+              className="h-8 px-3 text-xs font-medium text-blue-600 border-blue-300 hover:bg-blue-50 flex-shrink-0 gap-1.5 whitespace-nowrap mt-0"
             >
               <Search className="h-3.5 w-3.5" />
               Cerca prezzario
@@ -256,9 +264,18 @@ export function TabellaComputo({ categoriaId }: TabellaComputoProps) {
 
   const handleOpenRicerca = useCallback((rigaId: string) => {
     apriRicerca((voce) => {
+      // Usa voceBreve come titolo nel campo descrizione, salva il testo completo nelle note con prefisso __desc__
+      const titoloBreve = voce.voceBreve?.trim() || voce.descrizione.slice(0, 120);
+      const descCompleta = voce.descrizione;
       dispatch({ type: 'UPDATE_RIGA', payload: {
         id: rigaId,
-        updates: { codice: voce.codice, descrizione: voce.descrizione, unitaMisura: voce.unitaMisura, prezzoUnitario: voce.prezzoUnitario },
+        updates: {
+          codice: voce.codice,
+          descrizione: titoloBreve,
+          unitaMisura: voce.unitaMisura,
+          prezzoUnitario: voce.prezzoUnitario,
+          note: descCompleta !== titoloBreve ? `__desc__${descCompleta}` : undefined,
+        },
       }});
     });
   }, [apriRicerca, dispatch]);
