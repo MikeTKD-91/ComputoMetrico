@@ -371,12 +371,24 @@ export async function importaPrezzarioCSV(
                 continue;
               }
               
+              const voceHdr = headers.find(h => headerMap[h] === 'voceNumero');
+              const voceBreve = voceHdr ? String(row[voceHdr] || '').trim() : '';
+
+              const capitoloHdr = headers.find(h => headerMap[h] === 'capitolo');
+              const sottoCategoria = capitoloHdr ? String(row[capitoloHdr] || '').trim() || undefined : undefined;
+
+              const tipologiaHdr = headers.find(h => headerMap[h] === 'tipologiaFamiglia');
+              const categoria = tipologiaHdr ? String(row[tipologiaHdr] || '').trim() || undefined : undefined;
+
               voci.push({
                 id: uuidv4(),
                 codice,
                 descrizione,
+                voceBreve,
                 unitaMisura,
                 prezzoUnitario,
+                categoria,
+                sottoCategoria,
               });
             }
             
