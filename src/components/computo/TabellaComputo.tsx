@@ -204,11 +204,7 @@ function RigaComputoComponent({ riga, onUpdate, onDelete, onDuplicate, onMoveUp,
     setShowAutocomplete(false);
   };
 
-  const handleAddDetrazione = () => {
-    onAddMisurazione(riga.id);
-    // The newly added misurazione will be last; we need to toggle its sign
-    // We handle this by adding then letting the user click the +/- button
-  };
+
 
   return (
     <>
