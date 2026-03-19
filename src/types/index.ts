@@ -85,10 +85,12 @@ export const UNITA_MISURA_FORMULE: Record<UnitàMisura, {
 export interface VocePrezzario {
   id: string;
   codice: string;
-  descrizione: string;
+  descrizione: string;        // Articolo: descrizione tecnica completa
+  voceBreve: string;          // Voce: titolo breve dell'articolo
   unitaMisura: UnitàMisura;
   prezzoUnitario: number;
-  categoria?: string;
+  categoria?: string;         // Tipologia / Famiglia
+  sottoCategoria?: string;    // Capitolo
 }
 
 /**
