@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import {
   Plus, Trash2, Copy, AlertCircle, Calculator,
   ArrowUp, ArrowDown, Search, PlusCircle, MinusCircle,
@@ -10,7 +10,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useApp } from '@/store/AppContext';
 import { useRicercaPrezzario } from '@/App';
 import { UNITA_MISURA_FORMULE } from '@/types';
-import type { RigaComputo, Misurazione, VocePrezzario, UnitàMisura } from '@/types';
+import type { RigaComputo, Misurazione, UnitàMisura } from '@/types';
 import { formattaImporto, formattaNumero } from '@/utils/exportUtils';
 
 // ============================================================
