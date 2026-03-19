@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Plus, Trash2, Copy, AlertCircle, Calculator,
   ArrowUp, ArrowDown, Search, PlusCircle, MinusCircle,
@@ -118,7 +119,7 @@ function ModalRicercaPrezzario({ onSelect, onClose }: ModalRicercaPrezzarioProps
     );
   };
 
-  return (
+  return createPortal(
     /* Overlay */
     <div
       style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
@@ -241,7 +242,7 @@ function ModalRicercaPrezzario({ onSelect, onClose }: ModalRicercaPrezzarioProps
         </div>
       </div>
     </div>
-  );
+  , document.body);
 }
 
 // ============================================================
