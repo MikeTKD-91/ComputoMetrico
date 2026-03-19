@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
-import { 
-  FolderOpen, 
-  Plus, 
-  Trash2, 
-  Edit2, 
-  Save, 
+import {
+  FolderOpen,
+  Plus,
+  Trash2,
+  Edit2,
+  Save,
   X,
   ChevronDown,
   ChevronRight,
   Calculator,
   FileDown,
-  Table
+  Table,
+  User,
+  LayoutList,
+  FileText
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,7 +29,6 @@ import type { Categoria } from '@/types';
 // ============================================
 // COMPONENTE GESTIONE CATEGORIE
 // ============================================
-
 function GestioneCategorie() {
   const { state, dispatch } = useApp();
   const [nuovaCategoria, setNuovaCategoria] = useState('');
@@ -35,17 +37,12 @@ function GestioneCategorie() {
 
   const handleAggiungi = () => {
     if (nuovaCategoria.trim()) {
-      dispatch({ 
-        type: 'ADD_CATEGORIA', 
-        payload: { nome: nuovaCategoria.trim() } 
+      dispatch({
+        type: 'ADD_CATEGORIA',
+        payload: { nome: nuovaCategoria.trim() }
       });
       setNuovaCategoria('');
     }
-  };
-
-  const handleIniziaModifica = (cat: Categoria) => {
-    setCategoriaInModifica(cat);
-    setNomeModifica(cat.nome);
   };
 
   const handleSalvaModifica = () => {
@@ -60,111 +57,74 @@ function GestioneCategorie() {
 
   const handleElimina = (id: string) => {
     const categoria = state.computoCorrente?.categorie.find(c => c.id === id);
-    const numeroRighe = state.computoCorrente?.righe.filter(r => r.categoriaId === id).length || 0;
-    
-    const messaggio = numeroRighe > 0
-      ? `La categoria "${categoria?.nome}" contiene ${numeroRighe} righe. Le righe verranno spostate nella categoria "Generale". Sei sicuro?`
-      : `Sei sicuro di voler eliminare la categoria "${categoria?.nome}"?`;
-    
-    if (confirm(messaggio)) {
+    if (confirm(`Eliminare la categoria "${categoria?.nome}"?`)) {
       dispatch({ type: 'DELETE_CATEGORIA', payload: id });
     }
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-sm font-medium">Categorie</CardTitle>
+    <Card className="border-none shadow-none bg-transparent">
+      <CardHeader className="px-0 pt-0">
+        <CardTitle className="text-lg flex items-center gap-2">
+          <LayoutList className="w-5 h-5 text-blue-600" /> Capitoli e Categorie
+        </CardTitle>
       </CardHeader>
-      <CardContent>
-        {/* Aggiungi nuova */}
-        <div className="flex gap-2 mb-4">
+      <CardContent className="px-0">
+        <div className="flex gap-2 mb-6">
           <Input
             value={nuovaCategoria}
             onChange={(e) => setNuovaCategoria(e.target.value)}
-            placeholder="Nuova categoria..."
+            placeholder="Nuovo capitolo (es: Opere Murarie)"
             onKeyDown={(e) => e.key === 'Enter' && handleAggiungi()}
-            className="flex-1"
+            className="flex-1 bg-white"
           />
-          <Button onClick={handleAggiungi} size="sm">
-            <Plus className="h-4 w-4" />
+          <Button onClick={handleAggiungi} className="bg-blue-600 hover:bg-blue-700">
+            <Plus className="w-4 h-4 mr-2" /> Aggiungi
           </Button>
         </div>
 
-        {/* Lista categorie */}
         <div className="space-y-2">
-          {state.computoCorrente?.categorie.map((cat, index) => {
-            const numeroRighe = state.computoCorrente?.righe.filter(r => r.categoriaId === cat.id).length || 0;
-            const totale = state.computoCorrente?.righe
-              .filter(r => r.categoriaId === cat.id)
-              .reduce((sum, r) => sum + r.importo, 0) || 0;
-
-            return (
-              <div 
-                key={cat.id} 
-                className="flex items-center justify-between p-2 bg-gray-50 rounded hover:bg-gray-100"
-              >
-                {categoriaInModifica?.id === cat.id ? (
-                  <div className="flex items-center gap-2 flex-1">
-                    <Input
-                      value={nomeModifica}
-                      onChange={(e) => setNomeModifica(e.target.value)}
-                      className="h-7"
-                      autoFocus
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleSalvaModifica();
-                        if (e.key === 'Escape') setCategoriaInModifica(null);
-                      }}
-                    />
-                    <Button size="sm" variant="ghost" onClick={handleSalvaModifica} className="h-7 w-7 p-0">
-                      <Save className="h-3 w-3" />
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
-                      onClick={() => setCategoriaInModifica(null)}
-                      className="h-7 w-7 p-0"
+          {state.computoCorrente?.categorie.map((cat, index) => (
+            <div key={cat.id} className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:border-blue-300 transition-colors group">
+              {categoriaInModifica?.id === cat.id ? (
+                <div className="flex flex-1 gap-2">
+                  <Input
+                    value={nomeModifica}
+                    onChange={(e) => setNomeModifica(e.target.value)}
+                    className="h-9"
+                    autoFocus
+                  />
+                  <Button onClick={handleSalvaModifica} size="sm" className="bg-green-600">Salva</Button>
+                  <Button onClick={() => setCategoriaInModifica(null)} variant="ghost" size="sm">Annulla</Button>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-bold text-gray-400 bg-gray-100 w-6 h-6 flex items-center justify-center rounded-full">{index + 1}</span>
+                    <span className="font-semibold text-gray-700">{cat.nome}</span>
+                  </div>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => { setCategoriaInModifica(cat); setNomeModifica(cat.nome); }}
+                      className="h-8 w-8 p-0"
                     >
-                      <X className="h-3 w-3" />
+                      <Edit2 className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleElimina(cat.id)}
+                      className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                    >
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-400">{index + 1}.</span>
-                      <span className="font-medium">{cat.nome}</span>
-                      <Badge variant="secondary" className="text-xs">
-                        {numeroRighe} righe
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-600">
-                        {formattaImporto(totale)}
-                      </span>
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
-                        onClick={() => handleIniziaModifica(cat)}
-                        className="h-7 w-7 p-0"
-                      >
-                        <Edit2 className="h-3 w-3" />
-                      </Button>
-                      {index > 0 && (
-                        <Button 
-                          size="sm" 
-                          variant="ghost" 
-                          onClick={() => handleElimina(cat.id)}
-                          className="h-7 w-7 p-0 text-red-500 hover:text-red-700"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            );
-          })}
+                </>
+              )}
+            </div>
+          ))}
         </div>
       </CardContent>
     </Card>
@@ -172,268 +132,265 @@ function GestioneCategorie() {
 }
 
 // ============================================
-// COMPONENTE INTESTAZIONE COMPUTI
+// COMPONENTE INTESTAZIONE
 // ============================================
-
 function IntestazioneComputo() {
   const { state, dispatch } = useApp();
-  const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({
-    cliente: '',
-    indirizzo: '',
-    oggetto: '',
-    numero: '',
-  });
-
-  const handleEdit = () => {
-    if (state.computoCorrente) {
-      setFormData({
-        cliente: state.computoCorrente.intestazione.cliente,
-        indirizzo: state.computoCorrente.intestazione.indirizzo,
-        oggetto: state.computoCorrente.intestazione.oggetto,
-        numero: state.computoCorrente.intestazione.numero || '',
-      });
-      setIsEditing(true);
-    }
-  };
-
-  const handleSave = () => {
-    if (state.computoCorrente) {
-      dispatch({
-        type: 'UPDATE_COMPUTO',
-        payload: {
-          id: state.computoCorrente.id,
-          updates: {
-            intestazione: {
-              ...state.computoCorrente.intestazione,
-              ...formData,
-            }
+  
+  const updateIntestazione = (field: string, value: string) => {
+    if (!state.computoCorrente) return;
+    dispatch({
+      type: 'UPDATE_COMPUTO',
+      payload: {
+        id: state.computoCorrente.id,
+        updates: {
+          intestazione: {
+            ...state.computoCorrente.intestazione,
+            [field]: value
           }
         }
-      });
-      setIsEditing(false);
-    }
+      }
+    });
   };
 
   return (
-    <>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <FolderOpen className="h-5 w-5" />
-            {state.computoCorrente?.nome}
-          </CardTitle>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleEdit}>
-              <Edit2 className="h-4 w-4 mr-1" />
-              Modifica
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => state.computoCorrente && esportaComputoPDF(state.computoCorrente)}
-            >
-              <FileDown className="h-4 w-4 mr-1" />
-              PDF
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => state.computoCorrente && esportaComputoExcel(state.computoCorrente)}
-            >
-              <Table className="h-4 w-4 mr-1" />
-              Excel
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="text-gray-500">Cliente:</span>
-              <p className="font-medium">{state.computoCorrente?.intestazione.cliente || '-'}</p>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-4">
+       <Card className="border-gray-200 shadow-sm">
+         <CardHeader>
+           <CardTitle className="text-lg flex items-center gap-2">
+             <User className="w-5 h-5 text-blue-600" /> Dati Cliente
+           </CardTitle>
+         </CardHeader>
+         <CardContent className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Nome Cliente / Azienda</Label>
+              <Input 
+                value={state.computoCorrente?.intestazione.cliente || ''} 
+                onChange={(e) => updateIntestazione('cliente', e.target.value)}
+                placeholder="es: Mario Rossi"
+              />
             </div>
-            <div>
-              <span className="text-gray-500">Numero:</span>
-              <p className="font-medium">{state.computoCorrente?.intestazione.numero || '-'}</p>
+            <div className="space-y-1.5">
+              <Label>Indirizzo Lavori</Label>
+              <Input 
+                value={state.computoCorrente?.intestazione.indirizzo || ''} 
+                onChange={(e) => updateIntestazione('indirizzo', e.target.value)}
+                placeholder="es: Via Roma 1, Napoli"
+              />
             </div>
-            <div>
-              <span className="text-gray-500">Indirizzo:</span>
-              <p className="font-medium">{state.computoCorrente?.intestazione.indirizzo || '-'}</p>
-            </div>
-            <div>
-              <span className="text-gray-500">Data:</span>
-              <p className="font-medium">
-                {state.computoCorrente?.intestazione.data 
-                  ? new Date(state.computoCorrente.intestazione.data).toLocaleDateString('it-IT')
-                  : '-'
-                }
-              </p>
-            </div>
-            <div className="col-span-2">
-              <span className="text-gray-500">Oggetto:</span>
-              <p className="font-medium">{state.computoCorrente?.intestazione.oggetto || '-'}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+         </CardContent>
+       </Card>
 
-      {/* Dialog modifica intestazione */}
-      <Dialog open={isEditing} onOpenChange={setIsEditing}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Modifica Intestazione</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <Label>Cliente</Label>
-              <Input
-                value={formData.cliente}
-                onChange={(e) => setFormData({ ...formData, cliente: e.target.value })}
-                placeholder="Nome cliente"
+       <Card className="border-gray-200 shadow-sm">
+         <CardHeader>
+           <CardTitle className="text-lg flex items-center gap-2">
+             <FileText className="w-5 h-5 text-blue-600" /> Dati Progetto
+           </CardTitle>
+         </CardHeader>
+         <CardContent className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Oggetto dei Lavori</Label>
+              <Input 
+                value={state.computoCorrente?.intestazione.oggetto || ''} 
+                onChange={(e) => updateIntestazione('oggetto', e.target.value)}
+                placeholder="es: Ristrutturazione appartamento"
               />
             </div>
-            <div>
-              <Label>Indirizzo</Label>
-              <Input
-                value={formData.indirizzo}
-                onChange={(e) => setFormData({ ...formData, indirizzo: e.target.value })}
-                placeholder="Indirizzo lavori"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Numero Computo</Label>
+                <Input 
+                  value={state.computoCorrente?.intestazione.numero || ''} 
+                  onChange={(e) => updateIntestazione('numero', e.target.value)}
+                  placeholder="es: 01/2024"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Data</Label>
+                <Input 
+                  type="date"
+                  value={state.computoCorrente?.intestazione.data.split('T')[0] || ''} 
+                  onChange={(e) => updateIntestazione('data', e.target.value)}
+                />
+              </div>
             </div>
-            <div>
-              <Label>Oggetto</Label>
-              <Input
-                value={formData.oggetto}
-                onChange={(e) => setFormData({ ...formData, oggetto: e.target.value })}
-                placeholder="Oggetto dei lavori"
-              />
-            </div>
-            <div>
-              <Label>Numero computo</Label>
-              <Input
-                value={formData.numero}
-                onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
-                placeholder="Numero/Protocollo"
-              />
-            </div>
+         </CardContent>
+       </Card>
+    </div>
+  );
+}
+
+// ============================================
+// COMPONENTE RIEPILOGO E STAMPA
+// ============================================
+function RiepilogoStampa() {
+  const { state, totaleGenerale } = useApp();
+  if (!state.computoCorrente) return null;
+
+  return (
+    <div className="space-y-8 py-4">
+       <div className="flex justify-between items-start">
+          <div>
+            <h2 className="text-2xl font-black text-gray-800">Riepilogo Finale</h2>
+            <p className="text-gray-500">Controlla i totali e scarica il documento</p>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditing(false)}>
-              Annulla
-            </Button>
-            <Button onClick={handleSave}>
-              <Save className="h-4 w-4 mr-1" />
-              Salva
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+          <div className="flex gap-3">
+             <Button 
+               onClick={() => esportaComputoPDF(state.computoCorrente!)}
+               className="bg-blue-600 hover:bg-blue-700 font-bold"
+             >
+               <FileDown className="w-4 h-4 mr-2" /> Scarica PDF PriMus
+             </Button>
+             <Button 
+               variant="outline"
+               onClick={() => esportaComputoExcel(state.computoCorrente!)}
+             >
+               <FileDown className="w-4 h-4 mr-2" /> Esporta Excel
+             </Button>
+          </div>
+       </div>
+
+       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="md:col-span-2">
+             <CardHeader>
+               <CardTitle className="text-base uppercase tracking-wider text-gray-500">Dettaglio per Categoria</CardTitle>
+             </CardHeader>
+             <CardContent className="px-0">
+                <table className="w-full">
+                   <thead>
+                     <tr className="bg-gray-50 text-[10px] text-gray-400 border-y">
+                        <th className="px-6 py-2 text-left">CAPITOLO</th>
+                        <th className="px-6 py-2 text-center">VOCI</th>
+                        <th className="px-6 py-2 text-right">IMPORTO</th>
+                     </tr>
+                   </thead>
+                   <tbody>
+                      {state.computoCorrente.categorie.map(cat => {
+                        const righeCat = state.computoCorrente!.righe.filter(r => r.categoriaId === cat.id);
+                        const totale = righeCat.reduce((s, r) => s + r.importo, 0);
+                        return (
+                          <tr key={cat.id} className="border-b last:border-0 hover:bg-gray-50/50 transition-colors">
+                             <td className="px-6 py-4 font-semibold text-gray-700">{cat.nome}</td>
+                             <td className="px-6 py-4 text-center text-gray-500">{righeCat.length}</td>
+                             <td className="px-6 py-4 text-right font-bold text-blue-600">{formattaImporto(totale)}</td>
+                          </tr>
+                        );
+                      })}
+                   </tbody>
+                </table>
+             </CardContent>
+          </Card>
+
+          <Card className="bg-blue-700 text-white h-fit shadow-xl border-0">
+             <CardHeader>
+               <CardTitle className="text-white/80 text-xs uppercase font-black tracking-widest">Totale Generale</CardTitle>
+             </CardHeader>
+             <CardContent>
+                <div className="text-4xl font-black mb-1">{formattaImporto(totaleGenerale)}</div>
+                <div className="text-xs text-white/60">Totale calcolato su {state.computoCorrente.righe.length} voci totali</div>
+                <Separator className="my-6 bg-white/20" />
+                <div className="space-y-4">
+                   <div className="text-xs font-bold flex justify-between">
+                      <span>Imponibile</span>
+                      <span>{formattaImporto(totaleGenerale)}</span>
+                   </div>
+                   <div className="text-xs font-bold flex justify-between">
+                      <span>IVA (esclusa)</span>
+                      <span>0,00 €</span>
+                   </div>
+                </div>
+             </CardContent>
+          </Card>
+       </div>
+    </div>
   );
 }
 
 // ============================================
 // COMPONENTE PRINCIPALE EDITOR
 // ============================================
-
 export function EditorComputo() {
-  const { state, totaleGenerale } = useApp();
+  const { state } = useApp();
+  const [tabAttiva, setTabAttiva] = useState<'intestazione' | 'computo' | 'categorie' | 'riepilogo'>('computo');
   const [categoriaEspansa, setCategoriaEspansa] = useState<Record<string, boolean>>({});
 
-  // Espandi tutte le categorie all'apertura
   React.useEffect(() => {
     if (state.computoCorrente) {
       const espansi: Record<string, boolean> = {};
-      state.computoCorrente.categorie.forEach(cat => {
-        espansi[cat.id] = true;
-      });
+      state.computoCorrente.categorie.forEach(cat => { espansi[cat.id] = true; });
       setCategoriaEspansa(espansi);
     }
   }, [state.computoCorrente?.id]);
 
   const toggleCategoria = (catId: string) => {
-    setCategoriaEspansa(prev => ({
-      ...prev,
-      [catId]: !prev[catId]
-    }));
+    setCategoriaEspansa(prev => ({ ...prev, [catId]: !prev[catId] }));
   };
 
-  if (!state.computoCorrente) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <Calculator className="h-16 w-16 mx-auto text-gray-300 mb-4" />
-          <p className="text-gray-500">Nessun computo aperto</p>
-          <p className="text-sm text-gray-400">Crea o apri un computo per iniziare</p>
-        </div>
-      </div>
-    );
-  }
+  if (!state.computoCorrente) return null;
 
   return (
-    <div className="space-y-6">
-      {/* Intestazione */}
-      <IntestazioneComputo />
-
-      {/* Gestione Categorie */}
-      <GestioneCategorie />
-
-      {/* Categorie con tabelle */}
-      <div className="space-y-6">
-        {state.computoCorrente.categorie.map((categoria) => {
-          const numeroRighe = state.computoCorrente?.righe.filter(r => r.categoriaId === categoria.id).length || 0;
-          const totaleCategoria = state.computoCorrente?.righe
-            .filter(r => r.categoriaId === categoria.id)
-            .reduce((sum, r) => sum + r.importo, 0) || 0;
-
-          return (
-            <Card key={categoria.id}>
-              <CardHeader 
-                className="cursor-pointer hover:bg-gray-50"
-                onClick={() => toggleCategoria(categoria.id)}
-              >
-                <CardTitle className="text-base flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {categoriaEspansa[categoria.id] ? (
-                      <ChevronDown className="h-5 w-5 text-gray-400" />
-                    ) : (
-                      <ChevronRight className="h-5 w-5 text-gray-400" />
-                    )}
-                    <span>{categoria.nome}</span>
-                    <Badge variant="secondary">{numeroRighe} righe</Badge>
-                  </div>
-                  <span className="text-lg font-bold">
-                    {formattaImporto(totaleCategoria)}
-                  </span>
-                </CardTitle>
-              </CardHeader>
-              
-              {categoriaEspansa[categoria.id] && (
-                <CardContent>
-                  <TabellaComputo categoriaId={categoria.id} />
-                </CardContent>
-              )}
-            </Card>
-          );
-        })}
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      {/* TABS STILE PRIMUS */}
+      <div className="flex bg-gray-100 p-1 rounded-xl mb-8 gap-1 w-fit mx-auto shadow-inner border border-gray-200">
+        {[
+          { id: 'intestazione', label: 'Dati Generali', icon: User },
+          { id: 'categorie', label: 'Capitoli', icon: LayoutList },
+          { id: 'computo', label: 'Computo Metrico', icon: Calculator },
+          { id: 'riepilogo', label: 'Riepilogo e Stampa', icon: FileText },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setTabAttiva(tab.id as any)}
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-black transition-all ${
+              tabAttiva === tab.id 
+              ? 'bg-white text-blue-700 shadow-md transform scale-105' 
+              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
+            }`}
+          >
+            <tab.icon className="w-4 h-4" />
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      {/* Totale Generale */}
-      <Card className="bg-blue-50 border-blue-200">
-        <CardContent className="py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-blue-600 font-medium">TOTALE GENERALE COMPUTI</p>
-              <p className="text-xs text-blue-400">
-                {state.computoCorrente.righe.length} righe totali
-              </p>
-            </div>
-            <p className="text-3xl font-bold text-blue-700">
-              {formattaImporto(totaleGenerale)}
-            </p>
+      {/* CONTENUTO TAB */}
+      <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+        {tabAttiva === 'intestazione' && <IntestazioneComputo />}
+        
+        {tabAttiva === 'categorie' && <GestioneCategorie />}
+        
+        {tabAttiva === 'computo' && (
+          <div className="space-y-4">
+            {state.computoCorrente.categorie.map((categoria) => {
+              const righeCat = state.computoCorrente!.righe.filter(r => r.categoriaId === categoria.id);
+              const totCat = righeCat.reduce((s, r) => s + r.importo, 0);
+              
+              return (
+                <div key={categoria.id} className="border border-gray-200 rounded-xl bg-white overflow-hidden shadow-sm">
+                  <button
+                    onClick={() => toggleCategoria(categoria.id)}
+                    className="w-full flex items-center justify-between px-6 py-4 bg-gray-50/50 hover:bg-gray-50 transition-colors border-b"
+                  >
+                    <div className="flex items-center gap-3">
+                      {categoriaEspansa[categoria.id] ? <ChevronDown className="w-5 h-5 text-blue-600" /> : <ChevronRight className="w-5 h-5 text-gray-400" />}
+                      <span className="text-sm font-black text-gray-800 uppercase tracking-tight">{categoria.nome}</span>
+                      <Badge variant="secondary" className="ml-2 bg-blue-100 text-blue-700 border-0">{righeCat.length} voci</Badge>
+                    </div>
+                    <span className="text-sm font-black text-blue-700">{formattaImporto(totCat)}</span>
+                  </button>
+                  {categoriaEspansa[categoria.id] && (
+                    <div className="p-4 bg-gray-50/20">
+                      <TabellaComputo categoriaId={categoria.id} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        </CardContent>
-      </Card>
+        )}
+
+        {tabAttiva === 'riepilogo' && <RiepilogoStampa />}
+      </div>
     </div>
   );
 }
