@@ -33,31 +33,63 @@ function parsePrezzo(raw: string): number {
   return isNaN(n) ? 0 : n;
 }
 
-// ---- PARSER CSV SPECIFICO PER Prezzario-Articolo-2026 ----
+// ---- PARSER CSV - supporta separatore \n\r (Prezzario-Articolo-2026) ----
 async function parseCSV(file: File): Promise<{ voci: VocePrezzario[]; errori: string[] }> {
   return new Promise((resolve) => {
     const reader = new FileReader();
     reader.onload = (e) => {
-      const text = String(e.target?.result || '');
-      const lines = text.split(/\r?\n|\r/).filter(l => l.trim());
+      const raw = e.target?.result;
+      if (!raw) { resolve({ voci: [], errori: ['File vuoto'] }); return; }
+
+      // Leggi come ArrayBuffer per gestire correttamente \n\r (sequenza invertita)
+      const text = typeof raw === 'string' ? raw : new TextDecoder('utf-8').decode(raw as ArrayBuffer);
+
+      // Il file Prezzario-Articolo-2026 usa \n\r come terminatore di riga (invertito!)
+      // Quindi splittiamo su \n\r; fallback su \r\n o \n
+      let lines: string[];
+      if (text.includes('\n\r')) {
+        lines = text.split('\n\r').map(l => l.trim()).filter(l => l.length > 0);
+      } else {
+        lines = text.split(/\r\n|\r|\n/).map(l => l.trim()).filter(l => l.length > 0);
+      }
+
       if (lines.length < 2) { resolve({ voci: [], errori: ['File vuoto o non valido'] }); return; }
 
-      // Rileva separatore
+      // Rileva separatore (| o ;)
       const sep = (lines[0].match(/\|/g) || []).length > (lines[0].match(/;/g) || []).length ? '|' : ';';
 
-      // Parse header
+      // Parse header (prima riga, senza quotes)
       const headers = lines[0].split(sep).map(h => h.replace(/^"|"$/g, '').trim().toLowerCase());
 
       // Trova indici colonne
-      const iCodice = headers.findIndex(h => h === 'codice');
-      const iUM = headers.findIndex(h => h.includes('unit') && h.includes('misura') || h === 'um' || h === 'u.m.');
-      const iPrezzo = headers.findIndex(h => h === 'prezzo' && !h.includes('senza') && !h.includes('unitario'));
-      // Descrizione: priorità Articolo (descrizione specifica completa) > Descrizione > Voce (breve) > Tipologia
-      const iArticolo = headers.findIndex(h => h === 'articolo');
-      const iDescrizioneBase = headers.findIndex(h => h === 'descrizione');
-      const iVoce = headers.findIndex(h => h === 'voce');
-      const iTipologia = headers.findIndex(h => h.includes('tipologia') || h.includes('famiglia'));
-      const iCapitolo = headers.findIndex(h => h === 'capitolo');
+      const iCodice      = headers.findIndex(h => h === 'codice');
+      const iUM          = headers.findIndex(h => (h.includes('unit') && h.includes('misura')) || h === 'um' || h === 'u.m.');
+      const iPrezzo      = headers.findIndex(h => h === 'prezzo');
+      const iArticolo    = headers.findIndex(h => h === 'articolo');
+      const iVoce        = headers.findIndex(h => h === 'voce');
+      const iTipologia   = headers.findIndex(h => h.includes('tipologia') || h.includes('famiglia'));
+      const iCapitolo    = headers.findIndex(h => h === 'capitolo');
+
+      // Funzione per fare il split CSV rispettando le virgolette
+      function splitCSVLine(line: string, delimiter: string): string[] {
+        const cells: string[] = [];
+        let current = '';
+        let inQuotes = false;
+        for (let ci = 0; ci < line.length; ci++) {
+          const ch = line[ci];
+          if (ch === '"') {
+            if (inQuotes && line[ci + 1] === '"') { current += '"'; ci++; }
+            else { inQuotes = !inQuotes; }
+          } else if (ch === delimiter && !inQuotes) {
+            cells.push(current.trim());
+            current = '';
+          } else {
+            current += ch;
+          }
+        }
+        cells.push(current.trim());
+        return cells;
+      }
 
       const errori: string[] = [];
       const voci: VocePrezzario[] = [];
@@ -66,47 +98,47 @@ async function parseCSV(file: File): Promise<{ voci: VocePrezzario[]; errori: st
         const line = lines[i].trim();
         if (!line) continue;
 
-        // Split rispettando le virgolette
-        const cells: string[] = [];
-        let current = '';
-        let inQuotes = false;
-        for (let ci = 0; ci < line.length; ci++) {
-          const ch = line[ci];
-          if (ch === '"') { inQuotes = !inQuotes; }
-          else if (ch === sep && !inQuotes) { cells.push(current.trim()); current = ''; }
-          else { current += ch; }
-        }
-        cells.push(current.trim());
+        const cells = splitCSVLine(line, sep);
+        const get = (idx: number) => idx >= 0 && idx < cells.length ? cells[idx].replace(/^"|"$/g, '').trim() : '';
 
-        const get = (idx: number) => (cells[idx] || '').replace(/^"|"$/g, '').trim();
+        const codice = get(iCodice);
+        if (!codice) continue;
 
-        // Codice
-        const codice = iCodice >= 0 ? get(iCodice) : '';
-        if (!codice) continue; // salta righe senza codice
-
-        // Descrizione: priorità Articolo (specifica e completa) > Descrizione > Voce (breve) > Tipologia > Capitolo
-        let descrizione = '';
-        if (iArticolo >= 0) descrizione = get(iArticolo);
-        if (!descrizione && iDescrizioneBase >= 0) descrizione = get(iDescrizioneBase);
-        if (!descrizione && iVoce >= 0) descrizione = get(iVoce);
-        if (!descrizione && iTipologia >= 0) descrizione = get(iTipologia);
-        if (!descrizione && iCapitolo >= 0) descrizione = get(iCapitolo);
+        // Descrizione completa = Articolo (testo tecnico completo)
+        let descrizione = iArticolo >= 0 ? get(iArticolo) : '';
+        if (!descrizione) descrizione = iVoce >= 0 ? get(iVoce) : '';
+        if (!descrizione) descrizione = iTipologia >= 0 ? get(iTipologia) : '';
         if (!descrizione) { errori.push(`Riga ${i + 1}: descrizione mancante`); continue; }
+
+        // Voce breve (titolo sintetico)
+        const voceBreve = iVoce >= 0 ? get(iVoce) : '';
+
+        // Categoria = Tipologia / Famiglia
+        const categoria = iTipologia >= 0 ? get(iTipologia) : undefined;
+
+        // Sotto-categoria = Capitolo
+        const sottoCategoria = iCapitolo >= 0 ? get(iCapitolo) : undefined;
 
         // Unità di misura
         const umRaw = iUM >= 0 ? get(iUM) : '';
         const unitaMisura = normalizzaUM(umRaw);
         if (!unitaMisura) { errori.push(`Riga ${i + 1}: UM "${umRaw}" non riconosciuta`); continue; }
 
-        // Prezzo: colonna "Prezzo" (non "Prezzo senza S.G.")
+        // Prezzo (colonna "Prezzo", non "Prezzo senza S.G.")
         const prezzoRaw = iPrezzo >= 0 ? get(iPrezzo) : '';
         const prezzoUnitario = parsePrezzo(prezzoRaw);
         if (prezzoUnitario <= 0) { errori.push(`Riga ${i + 1}: prezzo non valido "${prezzoRaw}"`); continue; }
 
-        // Categoria dalla tipologia
-        const categoria = iTipologia >= 0 ? get(iTipologia) : undefined;
-
-        voci.push({ id: uuidv4(), codice, descrizione, unitaMisura, prezzoUnitario, categoria: categoria || undefined });
+        voci.push({
+          id: uuidv4(),
+          codice,
+          descrizione,
+          voceBreve,
+          unitaMisura,
+          prezzoUnitario,
+          categoria: categoria || undefined,
+          sottoCategoria: sottoCategoria || undefined,
+        });
       }
 
       resolve({ voci, errori });
@@ -119,10 +151,12 @@ async function parseCSV(file: File): Promise<{ voci: VocePrezzario[]; errori: st
 function VoceForm({ voce, onSave, onCancel }: { voce: Partial<VocePrezzario>; onSave: (v: VocePrezzario) => void; onCancel: () => void }) {
   const [form, setForm] = useState({
     codice: voce.codice ?? '',
+    voceBreve: voce.voceBreve ?? '',
     descrizione: voce.descrizione ?? '',
     unitaMisura: voce.unitaMisura ?? ('mq' as UnitàMisura),
     prezzoUnitario: voce.prezzoUnitario ?? 0,
     categoria: voce.categoria ?? '',
+    sottoCategoria: voce.sottoCategoria ?? '',
   });
   const valid = form.codice.trim() && form.descrizione.trim() && form.prezzoUnitario > 0;
 
@@ -134,13 +168,29 @@ function VoceForm({ voce, onSave, onCancel }: { voce: Partial<VocePrezzario>; on
           <Input value={form.codice} onChange={e => setForm(f => ({ ...f, codice: e.target.value }))} placeholder="es: DEM.001" className="h-8 text-sm" />
         </div>
         <div>
-          <label className="text-xs font-medium text-gray-600 mb-1 block">Categoria</label>
-          <Input value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))} placeholder="es: Demolizioni" className="h-8 text-sm" />
+          <label className="text-xs font-medium text-gray-600 mb-1 block">Voce (titolo breve)</label>
+          <Input value={form.voceBreve} onChange={e => setForm(f => ({ ...f, voceBreve: e.target.value }))} placeholder="es: Demolizione muratura" className="h-8 text-sm" />
         </div>
       </div>
       <div>
-        <label className="text-xs font-medium text-gray-600 mb-1 block">Descrizione *</label>
-        <Input value={form.descrizione} onChange={e => setForm(f => ({ ...f, descrizione: e.target.value }))} placeholder="Descrizione della lavorazione" className="h-8 text-sm" />
+        <label className="text-xs font-medium text-gray-600 mb-1 block">Descrizione completa (Articolo) *</label>
+        <textarea
+          value={form.descrizione}
+          onChange={e => setForm(f => ({ ...f, descrizione: e.target.value }))}
+          placeholder="Descrizione tecnica completa della lavorazione..."
+          className="w-full px-3 py-2 text-sm border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+          rows={3}
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-xs font-medium text-gray-600 mb-1 block">Categoria (Tipologia)</label>
+          <Input value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))} placeholder="es: Demolizioni" className="h-8 text-sm" />
+        </div>
+        <div>
+          <label className="text-xs font-medium text-gray-600 mb-1 block">Sotto-categoria (Capitolo)</label>
+          <Input value={form.sottoCategoria} onChange={e => setForm(f => ({ ...f, sottoCategoria: e.target.value }))} placeholder="es: Demolizione strutture" className="h-8 text-sm" />
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
@@ -156,7 +206,16 @@ function VoceForm({ voce, onSave, onCancel }: { voce: Partial<VocePrezzario>; on
       </div>
       <div className="flex gap-2 justify-end">
         <Button variant="outline" size="sm" onClick={onCancel}><X className="h-3 w-3 mr-1" />Annulla</Button>
-        <Button size="sm" onClick={() => valid && onSave({ id: voce.id ?? uuidv4(), codice: form.codice.trim(), descrizione: form.descrizione.trim(), unitaMisura: form.unitaMisura, prezzoUnitario: form.prezzoUnitario, categoria: form.categoria.trim() || undefined })} disabled={!valid}><Check className="h-3 w-3 mr-1" />Salva</Button>
+        <Button size="sm" onClick={() => valid && onSave({
+          id: voce.id ?? uuidv4(),
+          codice: form.codice.trim(),
+          voceBreve: form.voceBreve.trim(),
+          descrizione: form.descrizione.trim(),
+          unitaMisura: form.unitaMisura,
+          prezzoUnitario: form.prezzoUnitario,
+          categoria: form.categoria.trim() || undefined,
+          sottoCategoria: form.sottoCategoria.trim() || undefined,
+        })} disabled={!valid}><Check className="h-3 w-3 mr-1" />Salva</Button>
       </div>
     </div>
   );
@@ -171,6 +230,7 @@ export function ImportaPrezzario() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ vociImportate: number; errori: string[] } | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const itemsPerPage = 15;
 
@@ -179,7 +239,13 @@ export function ImportaPrezzario() {
   const filtered = useCallback(() => {
     if (!searchTerm.trim()) return voci;
     const s = searchTerm.toLowerCase();
-    return voci.filter(v => v.codice.toLowerCase().includes(s) || v.descrizione.toLowerCase().includes(s) || (v.categoria ?? '').toLowerCase().includes(s));
+    return voci.filter(v =>
+      v.codice.toLowerCase().includes(s) ||
+      v.descrizione.toLowerCase().includes(s) ||
+      (v.voceBreve ?? '').toLowerCase().includes(s) ||
+      (v.categoria ?? '').toLowerCase().includes(s) ||
+      (v.sottoCategoria ?? '').toLowerCase().includes(s)
+    );
   }, [voci, searchTerm])();
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
@@ -222,7 +288,6 @@ export function ImportaPrezzario() {
             <CardTitle className="text-lg">Prezzario</CardTitle>
             <div className="flex items-center gap-2 flex-wrap">
               <Badge variant="outline">{voci.length} voci</Badge>
-              {/* Import CSV */}
               <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleFileChange} />
               <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={importing}>
                 {importing ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Upload className="h-3 w-3 mr-1" />}
@@ -240,7 +305,6 @@ export function ImportaPrezzario() {
           </div>
         </CardHeader>
         <CardContent>
-          {/* Risultato import */}
           {importResult && (
             <div className={`mb-4 p-3 rounded-lg border text-sm ${importResult.vociImportate > 0 ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
               <div className="font-medium mb-1">
@@ -256,7 +320,6 @@ export function ImportaPrezzario() {
             </div>
           )}
 
-          {/* Form aggiunta */}
           {showAddForm && <VoceForm voce={{}} onSave={handleAdd} onCancel={() => setShowAddForm(false)} />}
 
           {voci.length === 0 && !showAddForm ? (
@@ -270,18 +333,18 @@ export function ImportaPrezzario() {
             <>
               <div className="relative mb-3">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }} placeholder="Cerca per codice, descrizione o categoria..." className="pl-9 h-9 text-sm" />
+                <Input value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }} placeholder="Cerca per codice, voce, descrizione, categoria..." className="pl-9 h-9 text-sm" />
               </div>
 
               <div className="border rounded-lg overflow-hidden">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-100">
                     <tr>
-                      <th className="px-3 py-2 text-left font-medium text-gray-600 w-28">Codice</th>
-                      <th className="px-3 py-2 text-left font-medium text-gray-600">Descrizione</th>
-                      <th className="px-3 py-2 text-left font-medium text-gray-600 w-32 hidden md:table-cell">Categoria</th>
-                      <th className="px-3 py-2 text-center font-medium text-gray-600 w-16">U.M.</th>
-                      <th className="px-3 py-2 text-right font-medium text-gray-600 w-28">Prezzo €</th>
+                      <th className="px-3 py-2 text-left font-medium text-gray-600 w-36">Codice</th>
+                      <th className="px-3 py-2 text-left font-medium text-gray-600">Voce / Descrizione</th>
+                      <th className="px-3 py-2 text-left font-medium text-gray-600 w-40 hidden lg:table-cell">Categoria / Capitolo</th>
+                      <th className="px-3 py-2 text-center font-medium text-gray-600 w-14">U.M.</th>
+                      <th className="px-3 py-2 text-right font-medium text-gray-600 w-24">Prezzo €</th>
                       <th className="px-3 py-2 text-center font-medium text-gray-600 w-20">Azioni</th>
                     </tr>
                   </thead>
@@ -292,19 +355,38 @@ export function ImportaPrezzario() {
                       editingId === voce.id ? (
                         <tr key={voce.id}><td colSpan={6} className="px-3 py-2"><VoceForm voce={voce} onSave={handleEdit} onCancel={() => setEditingId(null)} /></td></tr>
                       ) : (
-                        <tr key={voce.id} className="border-t hover:bg-gray-50">
-                          <td className="px-3 py-2 font-mono text-blue-600 text-xs">{voce.codice}</td>
-                          <td className="px-3 py-2 text-gray-800 text-xs">{voce.descrizione}</td>
-                          <td className="px-3 py-2 text-gray-500 text-xs hidden md:table-cell">{voce.categoria ?? '—'}</td>
-                          <td className="px-3 py-2 text-center"><Badge variant="outline" className="text-xs">{voce.unitaMisura}</Badge></td>
-                          <td className="px-3 py-2 text-right font-medium">€ {voce.prezzoUnitario.toFixed(2)}</td>
-                          <td className="px-3 py-2 text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              <button onClick={() => { setEditingId(voce.id); setShowAddForm(false); }} className="text-gray-400 hover:text-blue-600 p-1"><Edit2 className="h-3.5 w-3.5" /></button>
-                              <button onClick={() => handleDelete(voce.id)} className="text-gray-400 hover:text-red-600 p-1"><Trash2 className="h-3.5 w-3.5" /></button>
-                            </div>
-                          </td>
-                        </tr>
+                        <>
+                          <tr
+                            key={voce.id}
+                            className="border-t hover:bg-gray-50 cursor-pointer"
+                            onClick={() => setExpandedId(expandedId === voce.id ? null : voce.id)}
+                          >
+                            <td className="px-3 py-2 font-mono text-blue-600 text-xs align-top">{voce.codice}</td>
+                            <td className="px-3 py-2 align-top">
+                              <div className="font-medium text-xs text-gray-800">{voce.voceBreve || voce.descrizione.slice(0, 80)}</div>
+                              {expandedId === voce.id && (
+                                <div className="mt-1 text-xs text-gray-600 bg-blue-50 rounded p-2 leading-relaxed">
+                                  {voce.descrizione}
+                                </div>
+                              )}
+                              {!expandedId || expandedId !== voce.id ? (
+                                <div className="text-xs text-gray-400 mt-0.5 line-clamp-1">{voce.descrizione.slice(0, 100)}…</div>
+                              ) : null}
+                            </td>
+                            <td className="px-3 py-2 align-top hidden lg:table-cell">
+                              {voce.categoria && <div className="text-xs text-gray-700 font-medium">{voce.categoria}</div>}
+                              {voce.sottoCategoria && <div className="text-xs text-gray-500 mt-0.5">{voce.sottoCategoria}</div>}
+                            </td>
+                            <td className="px-3 py-2 text-center align-top"><Badge variant="outline" className="text-xs">{voce.unitaMisura}</Badge></td>
+                            <td className="px-3 py-2 text-right font-medium align-top text-sm">€ {voce.prezzoUnitario.toFixed(2)}</td>
+                            <td className="px-3 py-2 text-center align-top">
+                              <div className="flex items-center justify-center gap-1">
+                                <button onClick={e => { e.stopPropagation(); setEditingId(voce.id); setShowAddForm(false); }} className="text-gray-400 hover:text-blue-600 p-1"><Edit2 className="h-3.5 w-3.5" /></button>
+                                <button onClick={e => { e.stopPropagation(); handleDelete(voce.id); }} className="text-gray-400 hover:text-red-600 p-1"><Trash2 className="h-3.5 w-3.5" /></button>
+                              </div>
+                            </td>
+                          </tr>
+                        </>
                       )
                     ))}
                   </tbody>
