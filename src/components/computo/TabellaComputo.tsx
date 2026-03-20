@@ -9,6 +9,41 @@ import { UNITA_MISURA_FORMULE } from '@/types';
 import { formattaImporto, formattaNumero } from '@/utils/exportUtils';
 import { v4 as uuidv4 } from 'uuid';
 
+
+// ---- INPUT NUMERICO con 2 decimali e rosso se negativo ----
+function NumericInput({ value, onChange, placeholder, className, step, min }: {
+  value: number | null | undefined;
+  onChange: (v: number | null) => void;
+  placeholder?: string;
+  className?: string;
+  step?: string;
+  min?: string;
+}) {
+  const [display, setDisplay] = React.useState(
+    value != null && value !== 0 ? value.toFixed(2) : ''
+  );
+  React.useEffect(() => {
+    setDisplay(value != null && value !== 0 ? value.toFixed(2) : '');
+  }, [value]);
+  const isNeg = parseFloat(display) < 0;
+  return (
+    <input
+      type="number"
+      value={display}
+      placeholder={placeholder ?? '0.00'}
+      step={step ?? '0.01'}
+      min={min}
+      onChange={e => setDisplay(e.target.value)}
+      onBlur={() => {
+        const n = parseFloat(display);
+        if (isNaN(n)) { setDisplay(''); onChange(null); }
+        else { setDisplay(n.toFixed(2)); onChange(n); }
+      }}
+      className={`${className ?? ''} ${isNeg ? 'text-red-600 font-bold' : ''}`}
+    />
+  );
+}
+
 interface TabellaComputoProps { categoriaId: string; }
 
 export function TabellaComputo({ categoriaId }: TabellaComputoProps) {
@@ -157,7 +192,7 @@ export function TabellaComputo({ categoriaId }: TabellaComputoProps) {
                         <td className="px-2 py-3 text-center text-sm">—</td>
                         <td className="px-2 py-3 text-center text-sm font-semibold">{formattaNumero(quantitaTotale)}</td>
                         <td className="px-2 py-3 text-center">
-                          <input type="number" value={riga.prezzoUnitario || ''} onChange={(e) => handleUpdateRiga(riga.id, { prezzoUnitario: parseFloat(e.target.value) || 0 })} placeholder="0.00" className="w-20 h-8 px-2 text-sm text-center font-medium bg-white border border-gray-300 rounded focus:ring-1 focus:ring-blue-400" step="0.01" />
+                          <NumericInput value={riga.prezzoUnitario} onChange={v => handleUpdateRiga(riga.id, { prezzoUnitario: v ?? 0 })} className="w-20 h-8 px-2 text-sm text-center font-medium bg-white border border-gray-300 rounded focus:ring-1 focus:ring-blue-400" />
                         </td>
                         <td className="px-2 py-3 text-center font-bold text-blue-700">{formattaImporto(importoTotale)}</td>
                         <td className="px-2 py-3 text-center">
@@ -191,16 +226,16 @@ export function TabellaComputo({ categoriaId }: TabellaComputoProps) {
                             </td>
                             <td className="px-2 py-1 text-center text-xs">{riga.unitaMisura}</td>
                             <td className="px-2 py-1 text-center">
-                              <input type="number" value={mis.partiUguali ?? 1} onChange={(e) => handleUpdateMisurazione(riga.id, mis.id, { partiUguali: e.target.value ? parseFloat(e.target.value) : 1 })} className="w-14 h-7 px-1 text-xs text-center border border-gray-200 rounded focus:ring-1 focus:ring-blue-400" step="1" min="1" />
+                              <NumericInput value={mis.partiUguali ?? 1} onChange={v => handleUpdateMisurazione(riga.id, mis.id, { partiUguali: v ?? 1 })} className="w-14 h-7 px-1 text-xs text-center border border-gray-200 rounded focus:ring-1 focus:ring-blue-400" step="1" min="1" />
                             </td>
                             <td className="px-2 py-1 text-center">
-                              {formula.richiedeLunghezza ? <input type="number" value={mis.lunghezza ?? ''} onChange={(e) => handleUpdateMisurazione(riga.id, mis.id, { lunghezza: e.target.value ? parseFloat(e.target.value) : null })} className="w-14 h-7 px-1 text-xs text-center border border-gray-200 rounded focus:ring-1 focus:ring-blue-400" step="0.01" /> : <span className="text-gray-300">—</span>}
+                              {formula.richiedeLunghezza ? <NumericInput value={mis.lunghezza} onChange={v => handleUpdateMisurazione(riga.id, mis.id, { lunghezza: v })} className="w-14 h-7 px-1 text-xs text-center border border-gray-200 rounded focus:ring-1 focus:ring-blue-400" /> : <span className="text-gray-300">—</span>}
                             </td>
                             <td className="px-2 py-1 text-center">
-                              {formula.richiedeLarghezza ? <input type="number" value={mis.larghezza ?? ''} onChange={(e) => handleUpdateMisurazione(riga.id, mis.id, { larghezza: e.target.value ? parseFloat(e.target.value) : null })} className="w-14 h-7 px-1 text-xs text-center border border-gray-200 rounded focus:ring-1 focus:ring-blue-400" step="0.01" /> : <span className="text-gray-300">—</span>}
+                              {formula.richiedeLarghezza ? <NumericInput value={mis.larghezza} onChange={v => handleUpdateMisurazione(riga.id, mis.id, { larghezza: v })} className="w-14 h-7 px-1 text-xs text-center border border-gray-200 rounded focus:ring-1 focus:ring-blue-400" /> : <span className="text-gray-300">—</span>}
                             </td>
                             <td className="px-2 py-1 text-center">
-                              {formula.richiedeAltezza ? <input type="number" value={mis.altezza ?? ''} onChange={(e) => handleUpdateMisurazione(riga.id, mis.id, { altezza: e.target.value ? parseFloat(e.target.value) : null })} className="w-14 h-7 px-1 text-xs text-center border border-gray-200 rounded focus:ring-1 focus:ring-blue-400" step="0.01" /> : <span className="text-gray-300">—</span>}
+                              {formula.richiedeAltezza ? <NumericInput value={mis.altezza} onChange={v => handleUpdateMisurazione(riga.id, mis.id, { altezza: v })} className="w-14 h-7 px-1 text-xs text-center border border-gray-200 rounded focus:ring-1 focus:ring-blue-400" /> : <span className="text-gray-300">—</span>}
                             </td>
                             <td className="px-2 py-1 text-center text-xs font-semibold">{formattaNumero(Math.abs(qMis))}</td>
                             <td className="px-2 py-1"></td>
