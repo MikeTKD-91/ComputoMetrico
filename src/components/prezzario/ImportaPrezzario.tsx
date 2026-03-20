@@ -28,9 +28,40 @@ function normalizzaUM(raw: string): UnitàMisura | null {
 }
 
 function parsePrezzo(raw: string): number {
-  const cleaned = raw.replace(/[€$£\s]/g, '').replace(/\./g, '').replace(',', '.');
+  if (!raw || raw.trim() === '') return 0;
+  
+  // Rimuovi valute e spazi
+  let cleaned = raw.replace(/[€$£\s]/g, '').trim();
+  
+  // Gestisci formati: 1.000,50 (italiano) vs 1,000.50 (anglo)
+  // Se ha sia virgola che punto, è formato con separatori di migliaia
+  const hasComma = cleaned.includes(',');
+  const hasDot = cleaned.includes('.');
+  
+  if (hasComma && hasDot) {
+    // Entrambi presenti: usa l'ultimo come decimale
+    if (cleaned.lastIndexOf(',') > cleaned.lastIndexOf('.')) {
+      // Formato italiano: 1.000,50
+      cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+    } else {
+      // Formato anglo: 1,000.50
+      cleaned = cleaned.replace(/,/g, '');
+    }
+  } else if (hasComma && !hasDot) {
+    // Solo virgola: potrebbe essere decimale italiano o separatore
+    // Se dopo virgola ci sono esattamente 2-3 cifre, è decimale
+    const parts = cleaned.split(',');
+    if (parts[1]?.length === 2 || parts[1]?.length === 3) {
+      cleaned = cleaned.replace(',', '.');
+    } else {
+      // Altrimenti è separatore di migliaia
+      cleaned = cleaned.replace(/,/g, '');
+    }
+  }
+  // Se solo punto: potrebbe essere sia separatore che decimale, lo lasceremo così
+  
   const n = parseFloat(cleaned);
-  return isNaN(n) ? 0 : n;
+  return isNaN(n) || n < 0 ? 0 : n;
 }
 
 // ---- PARSER CSV - supporta separatore \n\r (Prezzario-Articolo-2026) ----
@@ -68,14 +99,37 @@ async function parseCSV(file: File): Promise<{ voci: VocePrezzario[]; errori: st
       // Parse header (prima riga, senza quotes)
       const headers = lines[0].split(sep).map(h => h.replace(/^"|"$/g, '').trim().toLowerCase());
 
-      // Trova indici colonne
-      const iCodice      = headers.findIndex(h => h === 'codice');
-      const iUM          = headers.findIndex(h => (h.includes('unit') && h.includes('misura')) || h === 'um' || h === 'u.m.');
-      const iPrezzo      = headers.findIndex(h => h === 'prezzo');
-      const iArticolo    = headers.findIndex(h => h === 'articolo');
-      const iVoce        = headers.findIndex(h => h === 'voce');
-      const iTipologia   = headers.findIndex(h => h.includes('tipologia') || h.includes('famiglia'));
-      const iCapitolo    = headers.findIndex(h => h === 'capitolo');
+      // Trova indici colonne con matching più robusto
+      const iCodice      = headers.findIndex(h => h === 'codice' || h === 'code' || h.startsWith('cod'));
+      const iUM          = headers.findIndex(h => 
+        h === 'um' || h === 'u.m.' || h.includes('unit') || h.includes('misura') || h === 'uom'
+      );
+      const iPrezzo      = headers.findIndex(h => 
+        h === 'prezzo' || h === 'price' || h === 'importo' || h === 'costo' || h.includes('prezzo')
+      );
+      const iArticolo    = headers.findIndex(h => 
+        h === 'articolo' || h === 'description' || h === 'descrizione' || h.includes('articolo')
+      );
+      const iVoce        = headers.findIndex(h => 
+        h === 'voce' || h === 'name' || h === 'title' || h.includes('voce')
+      );
+      const iTipologia   = headers.findIndex(h => 
+        h.includes('tipologia') || h.includes('famiglia') || h.includes('category') || h.includes('categoria')
+      );
+      const iCapitolo    = headers.findIndex(h => 
+        h === 'capitolo' || h === 'chapter' || h.includes('capitolo')
+      );
+
+      // Debug: verifica se sono state trovate le colonne critiche
+      if (iCodice < 0 || iPrezzo < 0 || iUM < 0) {
+        const erroriHeader = [];
+        if (iCodice < 0) erroriHeader.push('Colonna "codice" non trovata');
+        if (iPrezzo < 0) erroriHeader.push('Colonna "prezzo" non trovata');
+        if (iUM < 0) erroriHeader.push('Colonna "unit. misura" non trovata');
+        erroriHeader.push(`Header trovato: ${headers.join(' | ')}`);
+        resolve({ voci: [], errori: erroriHeader });
+        return;
+      }
 
       // Funzione per fare il split CSV rispettando le virgolette
       function splitCSVLine(line: string, delimiter: string): string[] {
@@ -129,12 +183,18 @@ async function parseCSV(file: File): Promise<{ voci: VocePrezzario[]; errori: st
         // Unità di misura
         const umRaw = iUM >= 0 ? get(iUM) : '';
         const unitaMisura = normalizzaUM(umRaw);
-        if (!unitaMisura) { errori.push(`Riga ${i + 1}: UM "${umRaw}" non riconosciuta`); continue; }
+        if (!unitaMisura) { 
+          errori.push(`Riga ${i + 1}: UM "${umRaw}" non riconosciuta (valori validi: mq, ml, mc, kg, q, t, nr, hh)`); 
+          continue; 
+        }
 
         // Prezzo (colonna "Prezzo", non "Prezzo senza S.G.")
         const prezzoRaw = iPrezzo >= 0 ? get(iPrezzo) : '';
         const prezzoUnitario = parsePrezzo(prezzoRaw);
-        if (prezzoUnitario <= 0) { errori.push(`Riga ${i + 1}: prezzo non valido "${prezzoRaw}"`); continue; }
+        if (prezzoUnitario <= 0) { 
+          errori.push(`Riga ${i + 1}: prezzo non valido "${prezzoRaw}" (ricevuto: ${prezzoUnitario})`); 
+          continue; 
+        }
 
         voci.push({
           id: uuidv4(),
