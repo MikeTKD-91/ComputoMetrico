@@ -135,6 +135,7 @@ export interface Categoria {
   nome: string;
   descrizione?: string;
   ordine: number;
+  parentId?: string; // Per sottocategorie
 }
 
 /**

@@ -48,7 +48,7 @@ type Action =
   | { type: 'SAVE_COMPUTO' }
   
   // Categorie
-  | { type: 'ADD_CATEGORIA'; payload: { nome: string; descrizione?: string } }
+  | { type: 'ADD_CATEGORIA'; payload: { nome: string; descrizione?: string; parentId?: string } }
   | { type: 'UPDATE_CATEGORIA'; payload: { id: string; updates: Partial<Categoria> } }
   | { type: 'DELETE_CATEGORIA'; payload: string }
   | { type: 'REORDER_CATEGORIE'; payload: Categoria[] }
@@ -85,6 +85,8 @@ function calculateQuantitaMisurazione(
 ): number {
   const formula = UNITA_MISURA_FORMULE[unitaMisura];
   const partiUguali = misurazione.partiUguali ?? 1;
+
+  // Unità con formule dimensioni (mq, mc, ml, ecc.)
   if (formula.richiedeLunghezza || formula.richiedeLarghezza || formula.richiedeAltezza) {
     const l = misurazione.lunghezza ?? 0;
     const la = misurazione.larghezza ?? 0;
@@ -94,7 +96,9 @@ function calculateQuantitaMisurazione(
     if (formula.richiedeAltezza && a === 0) return 0;
     return formula.formula(l, la, a) * partiUguali;
   }
-  return 0;
+
+  // Unità manuali: la quantità viene inserita direttamente dall'utente
+  return misurazione.quantitaParziale ?? 0;
 }
 
 function calculateQuantitaTotale(unitaMisura: UnitàMisura, misurazioni: Misurazione[]): number {
@@ -247,6 +251,7 @@ function appReducer(state: AppState, action: Action): AppState {
         nome: action.payload.nome,
         descrizione: action.payload.descrizione,
         ordine: state.computoCorrente.categorie.length,
+        parentId: action.payload.parentId,
       };
       
       const computoAggiornato = {

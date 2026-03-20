@@ -46,8 +46,12 @@ export function esportaComputoExcel(computo: Computo): void {
   // === FOGLIO 2: Computo completo ===
   const excelRows: ExcelRow[] = [];
 
-  computo.categorie.forEach(categoria => {
-    // Aggiungi riga categoria
+  // Raggruppa categorie per padre/figlio
+  const categoriePadre = computo.categorie.filter(c => !c.parentId);
+  const categorieFiglie = computo.categorie.filter(c => c.parentId);
+
+  categoriePadre.forEach(categoria => {
+    // Aggiungi riga categoria principale
     excelRows.push({
       'N.': 0,
       'Codice': '',
@@ -62,7 +66,7 @@ export function esportaComputoExcel(computo: Computo): void {
       'Note': '',
     });
 
-    // Aggiungi righe della categoria
+    // Aggiungi righe della categoria principale
     const righeCategoria = computo.righe.filter(r => r.categoriaId === categoria.id);
     righeCategoria.forEach(riga => {
       excelRows.push({
@@ -80,8 +84,64 @@ export function esportaComputoExcel(computo: Computo): void {
       });
     });
 
-    // Aggiungi totale categoria
-    const totaleCategoria = righeCategoria.reduce((sum, r) => sum + r.importo, 0);
+    // Sottocategorie
+    const sottocategorie = categorieFiglie.filter(s => s.parentId === categoria.id);
+    sottocategorie.forEach(sottoCat => {
+      // Riga sottocategoria
+      excelRows.push({
+        'N.': 0,
+        'Codice': '',
+        'Descrizione': `  └─ ${sottoCat.nome.toUpperCase()}`,
+        'U.M.': '',
+        'Lunghezza (m)': '',
+        'Larghezza (m)': '',
+        'Altezza (m)': '',
+        'Quantità': 0,
+        'Prezzo unitario (€)': 0,
+        'Importo (€)': 0,
+        'Note': '',
+      });
+
+      // Righe della sottocategoria
+      const righeSottoCat = computo.righe.filter(r => r.categoriaId === sottoCat.id);
+      righeSottoCat.forEach(riga => {
+        excelRows.push({
+          'N.': riga.numero,
+          'Codice': riga.codice,
+          'Descrizione': `    ${riga.descrizione}`,
+          'U.M.': riga.unitaMisura,
+          'Lunghezza (m)': riga.misurazioni.length > 0 ? riga.misurazioni.map(m => m.lunghezza ?? '').join(', ') : '',
+          'Larghezza (m)': riga.misurazioni.length > 0 ? riga.misurazioni.map(m => m.larghezza ?? '').join(', ') : '',
+          'Altezza (m)': riga.misurazioni.length > 0 ? riga.misurazioni.map(m => m.altezza ?? '').join(', ') : '',
+          'Quantità': riga.quantita,
+          'Prezzo unitario (€)': riga.prezzoUnitario,
+          'Importo (€)': riga.importo,
+          'Note': riga.note || '',
+        });
+      });
+
+      // Totale sottocategoria
+      const totaleSottoCat = righeSottoCat.reduce((sum, r) => sum + r.importo, 0);
+      if (totaleSottoCat > 0) {
+        excelRows.push({
+          'N.': 0,
+          'Codice': '',
+          'Descrizione': `  TOTALE ${sottoCat.nome}`,
+          'U.M.': '',
+          'Lunghezza (m)': '',
+          'Larghezza (m)': '',
+          'Altezza (m)': '',
+          'Quantità': 0,
+          'Prezzo unitario (€)': 0,
+          'Importo (€)': totaleSottoCat,
+          'Note': '',
+        });
+      }
+    });
+
+    // Aggiungi totale categoria (inclusi sottototali)
+    const righeSotto = sottocategorie.flatMap(sotto => computo.righe.filter(r => r.categoriaId === sotto.id));
+    const totaleCategoria = righeCategoria.reduce((sum, r) => sum + r.importo, 0) + righeSotto.reduce((sum, r) => sum + r.importo, 0);
     excelRows.push({
       'N.': 0,
       'Codice': '',
@@ -215,11 +275,18 @@ export function esportaComputoPDF(computo: Computo): void {
 
   let totaleGenerale = 0;
 
-  computo.categorie.forEach(categoria => {
-    const righe = computo.righe.filter(r => r.categoriaId === categoria.id);
-    if (righe.length === 0) return;
+  // Raggruppa categorie per padre/figlio
+  const categoriePadre = computo.categorie.filter(c => !c.parentId);
+  const categorieFiglie = computo.categorie.filter(c => c.parentId);
 
-    // Header categoria
+  categoriePadre.forEach(categoria => {
+    const righe = computo.righe.filter(r => r.categoriaId === categoria.id);
+    const sottocategorie = categorieFiglie.filter(s => s.parentId === categoria.id);
+    const righeSotto = sottocategorie.flatMap(sotto => computo.righe.filter(r => r.categoriaId === sotto.id));
+    
+    if (righe.length === 0 && righeSotto.length === 0) return;
+
+    // Header categoria principale
     contenuto.push({
       text: categoria.nome.toUpperCase(),
       bold: true,
@@ -239,6 +306,7 @@ export function esportaComputoPDF(computo: Computo): void {
       { text: 'Importo €', bold: true, fillColor: '#f3f4f6', alignment: 'right' },
     ]];
 
+    // Righe categoria principale
     righe.forEach((riga, i) => {
       // Riga principale voce
       tableBody.push([
@@ -266,7 +334,63 @@ export function esportaComputoPDF(computo: Computo): void {
       });
     });
 
-    const totCat = righe.reduce((s, r) => s + r.importo, 0);
+    // Sottocategorie
+    sottocategorie.forEach(sottoCat => {
+      const righeSottoCat = computo.righe.filter(r => r.categoriaId === sottoCat.id);
+      if (righeSottoCat.length === 0) return;
+
+      // Header sottocategoria
+      tableBody.push([
+        { text: '', fillColor: '#f0f9ff' },
+        { text: '', fillColor: '#f0f9ff' },
+        { text: `└─ ${sottoCat.nome}`, bold: true, fontSize: 8, fillColor: '#f0f9ff', color: '#0369a1' },
+        { text: '', fillColor: '#f0f9ff' },
+        { text: '', fillColor: '#f0f9ff' },
+        { text: '', fillColor: '#f0f9ff' },
+        { text: '', fillColor: '#f0f9ff' },
+      ]);
+
+      righeSottoCat.forEach((riga) => {
+        // Riga principale voce sottocategoria
+        tableBody.push([
+          { text: String(riga.numero), alignment: 'center', fillColor: '#f0f9ff' },
+          { text: riga.codice, fontSize: 7, fillColor: '#f0f9ff' },
+          { text: `  ${riga.descrizione}`, fontSize: 8, fillColor: '#f0f9ff' },
+          { text: riga.unitaMisura, alignment: 'center', fillColor: '#f0f9ff' },
+          { text: riga.quantita.toFixed(2), alignment: 'right', fillColor: '#f0f9ff' },
+          { text: riga.prezzoUnitario.toFixed(2), alignment: 'right', fillColor: '#f0f9ff' },
+          { text: riga.importo.toFixed(2), alignment: 'right', bold: true, fillColor: '#f0f9ff' },
+        ]);
+
+        // Righe misurazioni (sotto-righe)
+        riga.misurazioni.forEach(mis => {
+          const segno = mis.segno === -1 ? '−' : '+';
+          tableBody.push([
+            { text: segno, alignment: 'center', fontSize: 7, color: mis.segno === -1 ? 'red' : 'green', fillColor: '#f0f9ff' },
+            { text: '', fillColor: '#f0f9ff' },
+            { text: `  ${mis.descrizione || ''}`, fontSize: 7, italics: true, fillColor: '#f0f9ff' },
+            { text: '', fillColor: '#f0f9ff' },
+            { text: mis.quantitaParziale !== 0 ? `${Math.abs(mis.quantitaParziale).toFixed(2)}` : '', fontSize: 7, alignment: 'right', fillColor: '#f0f9ff' },
+            { text: '', fillColor: '#f0f9ff' },
+            { text: '', fillColor: '#f0f9ff' },
+          ]);
+        });
+      });
+
+      // Totale sottocategoria
+      const totSotto = righeSottoCat.reduce((s, r) => s + r.importo, 0);
+      tableBody.push([
+        { text: '', fillColor: '#dbeafe' },
+        { text: '', fillColor: '#dbeafe' },
+        { text: `Totale ${sottoCat.nome}`, bold: true, fontSize: 8, fillColor: '#dbeafe' },
+        { text: '', fillColor: '#dbeafe' },
+        { text: '', fillColor: '#dbeafe' },
+        { text: '', fillColor: '#dbeafe' },
+        { text: totSotto.toFixed(2) + ' €', bold: true, alignment: 'right', fillColor: '#dbeafe' },
+      ]);
+    });
+
+    const totCat = righe.reduce((s, r) => s + r.importo, 0) + righeSotto.reduce((s, r) => s + r.importo, 0);
     totaleGenerale += totCat;
 
     // Totale categoria

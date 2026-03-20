@@ -31,15 +31,65 @@ function GestioneCategorie() {
   const [nuovaCategoria, setNuovaCategoria] = useState('');
   const [categoriaInModifica, setCategoriaInModifica] = useState<Categoria | null>(null);
   const [nomeModifica, setNomeModifica] = useState('');
+  const [categoriaPadre, setCategoriaPadre] = useState<string>('');
+  const [capitoliSelezionati, setCapitoliSelezionati] = useState<Set<string>>(new Set());
+  const [sottocategorieDaCreare, setSottocategorieDaCreare] = useState('');
+
+  const categoriePadre = state.computoCorrente?.categorie.filter(c => !c.parentId) || [];
+  const categorieFiglie = state.computoCorrente?.categorie.filter(c => c.parentId) || [];
 
   const handleAggiungi = () => {
     if (nuovaCategoria.trim()) {
       dispatch({
         type: 'ADD_CATEGORIA',
-        payload: { nome: nuovaCategoria.trim() }
+        payload: { 
+          nome: nuovaCategoria.trim(),
+          parentId: categoriaPadre || undefined
+        }
       });
       setNuovaCategoria('');
+      setCategoriaPadre('');
     }
+  };
+
+  const handleCreaSottocategorie = () => {
+    if (sottocategorieDaCreare.trim() && capitoliSelezionati.size > 0) {
+      const nomiSottocategorie = sottocategorieDaCreare.split(',').map(n => n.trim()).filter(n => n);
+      
+      nomiSottocategorie.forEach(nome => {
+        capitoliSelezionati.forEach(capId => {
+          dispatch({
+            type: 'ADD_CATEGORIA',
+            payload: { 
+              nome: nome,
+              parentId: capId
+            }
+          });
+        });
+      });
+      
+      setSottocategorieDaCreare('');
+      setCapitoliSelezionati(new Set());
+      setShowCreaSottocategorie(false);
+    }
+  };
+
+  const toggleCapitoloSelezionato = (capId: string) => {
+    const nuoviSelezionati = new Set(capitoliSelezionati);
+    if (nuoviSelezionati.has(capId)) {
+      nuoviSelezionati.delete(capId);
+    } else {
+      nuoviSelezionati.add(capId);
+    }
+    setCapitoliSelezionati(nuoviSelezionati);
+  };
+
+  const selezionaTuttiCapitoli = () => {
+    setCapitoliSelezionati(new Set(categoriePadre.map(c => c.id)));
+  };
+
+  const deselezionaTuttiCapitoli = () => {
+    setCapitoliSelezionati(new Set());
   };
 
   const handleSalvaModifica = () => {
@@ -68,58 +118,177 @@ function GestioneCategorie() {
       </CardHeader>
       <CardContent className="px-0">
         <div className="flex gap-2 mb-6">
-          <Input
-            value={nuovaCategoria}
-            onChange={(e) => setNuovaCategoria(e.target.value)}
-            placeholder="Nuovo capitolo (es: Opere Murarie)"
-            onKeyDown={(e) => e.key === 'Enter' && handleAggiungi()}
-            className="flex-1 bg-white"
-          />
+          <div className="flex-1 space-y-2">
+            <Input
+              value={nuovaCategoria}
+              onChange={(e) => setNuovaCategoria(e.target.value)}
+              placeholder="Nuovo capitolo o sottocategoria"
+              onKeyDown={(e) => e.key === 'Enter' && handleAggiungi()}
+              className="bg-white"
+            />
+            {categoriePadre.length > 0 && (
+              <select
+                value={categoriaPadre}
+                onChange={(e) => setCategoriaPadre(e.target.value)}
+                className="w-full h-9 px-3 text-sm border border-gray-300 rounded-md bg-white focus:ring-1 focus:ring-blue-400"
+              >
+                <option value="">— Capitolo principale —</option>
+                {categoriePadre.map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.nome}</option>
+                ))}
+              </select>
+            )}
+          </div>
           <Button onClick={handleAggiungi} className="bg-blue-600 hover:bg-blue-700">
             <Plus className="w-4 h-4 mr-2" /> Aggiungi
           </Button>
         </div>
 
-        <div className="space-y-2">
-          {state.computoCorrente?.categorie.map((cat, index) => (
-            <div key={cat.id} className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:border-blue-300 transition-colors group">
-              {categoriaInModifica?.id === cat.id ? (
-                <div className="flex flex-1 gap-2">
-                  <Input
-                    value={nomeModifica}
-                    onChange={(e) => setNomeModifica(e.target.value)}
-                    className="h-9"
-                    autoFocus
+        {/* Sezione creazione sottocategorie multiple */}
+        {categoriePadre.length > 0 && (
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-blue-800">Crea sottocategorie per capitoli selezionati</h3>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={selezionaTuttiCapitoli} 
+                  size="sm" 
+                  variant="outline"
+                  className="text-xs"
+                >
+                  Seleziona tutti
+                </Button>
+                <Button 
+                  onClick={deselezionaTuttiCapitoli} 
+                  size="sm" 
+                  variant="outline"
+                  className="text-xs"
+                >
+                  Deseleziona tutti
+                </Button>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 mb-3">
+              {categoriePadre.map(cat => (
+                <label key={cat.id} className="flex items-center gap-2 p-2 bg-white border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={capitoliSelezionati.has(cat.id)}
+                    onChange={() => toggleCapitoloSelezionato(cat.id)}
+                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
                   />
-                  <Button onClick={handleSalvaModifica} size="sm" className="bg-green-600">Salva</Button>
-                  <Button onClick={() => setCategoriaInModifica(null)} variant="ghost" size="sm">Annulla</Button>
+                  <span className="text-sm font-medium text-gray-700">{cat.nome}</span>
+                </label>
+              ))}
+            </div>
+
+            {capitoliSelezionati.size > 0 && (
+              <div className="flex gap-2">
+                <Input
+                  value={sottocategorieDaCreare}
+                  onChange={(e) => setSottocategorieDaCreare(e.target.value)}
+                  placeholder="Nomi sottocategorie (separati da virgola)"
+                  className="flex-1 bg-white"
+                  onKeyDown={(e) => e.key === 'Enter' && handleCreaSottocategorie()}
+                />
+                <Button onClick={handleCreaSottocategorie} className="bg-green-600 hover:bg-green-700">
+                  <Plus className="w-4 h-4 mr-2" /> Crea sottocategorie
+                </Button>
+              </div>
+            )}
+            
+            {capitoliSelezionati.size > 0 && (
+              <p className="text-xs text-blue-600 mt-2">
+                Verranno create {sottocategorieDaCreare.split(',').filter(n => n.trim()).length} sottocategorie per {capitoliSelezionati.size} capitoli selezionati
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className="space-y-2">
+          {categoriePadre.map((cat, index) => (
+            <div key={cat.id}>
+              <div className={`flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors group ${
+                capitoliSelezionati.has(cat.id) ? 'bg-blue-50 border-blue-300' : 'bg-white'
+              }`}>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={capitoliSelezionati.has(cat.id)}
+                    onChange={() => toggleCapitoloSelezionato(cat.id)}
+                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-xs font-bold text-gray-400 bg-gray-100 w-6 h-6 flex items-center justify-center rounded-full">{index + 1}</span>
+                  <span className="font-semibold text-gray-700">{cat.nome}</span>
+                  <Badge variant="outline" className="text-xs">Capitolo</Badge>
+                  {capitoliSelezionati.has(cat.id) && (
+                    <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">Selezionato</Badge>
+                  )}
                 </div>
-              ) : (
-                <>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-bold text-gray-400 bg-gray-100 w-6 h-6 flex items-center justify-center rounded-full">{index + 1}</span>
-                    <span className="font-semibold text-gray-700">{cat.nome}</span>
-                  </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => { setCategoriaInModifica(cat); setNomeModifica(cat.nome); }}
-                      className="h-8 w-8 p-0"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleElimina(cat.id)}
-                      className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </>
-              )}
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { setCategoriaInModifica(cat); setNomeModifica(cat.nome); }}
+                    className="h-8 w-8 p-0"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleElimina(cat.id)}
+                    className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+              
+              {/* Sottocategorie */}
+              {categorieFiglie.filter(sotto => sotto.parentId === cat.id).map((sottoCat, sottoIndex) => (
+                <div key={sottoCat.id} className="flex items-center justify-between p-3 ml-8 mt-1 bg-blue-50 border border-blue-200 rounded-lg hover:border-blue-300 transition-colors group">
+                  {categoriaInModifica?.id === sottoCat.id ? (
+                    <div className="flex flex-1 gap-2">
+                      <Input
+                        value={nomeModifica}
+                        onChange={(e) => setNomeModifica(e.target.value)}
+                        className="h-9"
+                        autoFocus
+                      />
+                      <Button onClick={handleSalvaModifica} size="sm" className="bg-green-600">Salva</Button>
+                      <Button onClick={() => setCategoriaInModifica(null)} variant="ghost" size="sm">Annulla</Button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-bold text-blue-400 bg-blue-100 w-5 h-5 flex items-center justify-center rounded-full">{index + 1}.{sottoIndex + 1}</span>
+                        <span className="font-medium text-gray-700">{sottoCat.nome}</span>
+                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">Sottocategoria</Badge>
+                      </div>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => { setCategoriaInModifica(sottoCat); setNomeModifica(sottoCat.nome); }}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleElimina(sottoCat.id)}
+                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
             </div>
           ))}
         </div>
@@ -311,6 +480,9 @@ export function EditorComputo() {
   const [tabAttiva, setTabAttiva] = useState<'intestazione' | 'computo' | 'categorie' | 'riepilogo'>('computo');
   const [categoriaEspansa, setCategoriaEspansa] = useState<Record<string, boolean>>({});
 
+  const categoriePadre = state.computoCorrente?.categorie.filter(c => !c.parentId) || [];
+  const categorieFiglie = state.computoCorrente?.categorie.filter(c => c.parentId) || [];
+
   React.useEffect(() => {
     if (state.computoCorrente) {
       const espansi: Record<string, boolean> = {};
@@ -335,7 +507,7 @@ export function EditorComputo() {
         onSave={() => {}}
       />
       
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="w-full min-h-screen bg-gray-50">
       {/* TABS STILE PRIMUS */}
       <div className="flex bg-gray-100 p-1 rounded-xl mb-8 gap-1 w-fit mx-auto shadow-inner border border-gray-200">
         {[
@@ -360,16 +532,20 @@ export function EditorComputo() {
       </div>
 
       {/* CONTENUTO TAB */}
-      <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+      <div className="w-full px-4 sm:px-6 lg:px-8 pb-8">
         {tabAttiva === 'intestazione' && <IntestazioneComputo />}
         
         {tabAttiva === 'categorie' && <GestioneCategorie />}
         
         {tabAttiva === 'computo' && (
           <div className="space-y-4">
-            {state.computoCorrente.categorie.map((categoria) => {
+            {categoriePadre.map((categoria) => {
+              const sottocategorie = categorieFiglie.filter(s => s.parentId === categoria.id);
               const righeCat = state.computoCorrente!.righe.filter(r => r.categoriaId === categoria.id);
-              const totCat = righeCat.reduce((s, r) => s + r.importo, 0);
+              const righeSotto = sottocategorie.flatMap(sotto => 
+                state.computoCorrente!.righe.filter(r => r.categoriaId === sotto.id)
+              );
+              const totCat = righeCat.reduce((s, r) => s + r.importo, 0) + righeSotto.reduce((s, r) => s + r.importo, 0);
               
               return (
                 <div key={categoria.id} className="border border-gray-200 rounded-xl bg-white overflow-hidden shadow-sm">
@@ -380,13 +556,34 @@ export function EditorComputo() {
                     <div className="flex items-center gap-3">
                       {categoriaEspansa[categoria.id] ? <ChevronDown className="w-5 h-5 text-blue-600" /> : <ChevronRight className="w-5 h-5 text-gray-400" />}
                       <span className="text-sm font-black text-gray-800 uppercase tracking-tight">{categoria.nome}</span>
-                      <Badge variant="secondary" className="ml-2 bg-blue-100 text-blue-700 border-0">{righeCat.length} voci</Badge>
+                      <Badge variant="secondary" className="ml-2 bg-blue-100 text-blue-700 border-0">{righeCat.length + righeSotto.length} voci</Badge>
                     </div>
                     <span className="text-sm font-black text-blue-700">{formattaImporto(totCat)}</span>
                   </button>
                   {categoriaEspansa[categoria.id] && (
                     <div className="p-4 bg-gray-50/20">
-                      <TabellaComputo categoriaId={categoria.id} />
+                      {/* Tabella categoria principale */}
+                      {righeCat.length > 0 && (
+                        <div className="mb-6">
+                          <TabellaComputo categoriaId={categoria.id} />
+                        </div>
+                      )}
+                      
+                      {/* Sottocategorie */}
+                      {sottocategorie.map((sottoCat) => {
+                        const righeSottoCat = state.computoCorrente!.righe.filter(r => r.categoriaId === sottoCat.id);
+                        const totSotto = righeSottoCat.reduce((s, r) => s + r.importo, 0);
+                        
+                        return righeSottoCat.length > 0 ? (
+                          <div key={sottoCat.id} className="mb-6">
+                            <div className="flex items-center justify-between px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg mb-3">
+                              <span className="text-sm font-semibold text-blue-800">{sottoCat.nome}</span>
+                              <span className="text-sm font-bold text-blue-700">{formattaImporto(totSotto)}</span>
+                            </div>
+                            <TabellaComputo categoriaId={sottoCat.id} />
+                          </div>
+                        ) : null;
+                      })}
                     </div>
                   )}
                 </div>
