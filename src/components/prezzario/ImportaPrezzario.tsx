@@ -16,22 +16,34 @@ const UNITA_OPTIONS = Object.keys(UNITA_MISURA_FORMULE) as UnitàMisura[];
 function normalizzaUM(raw: string): UnitàMisura | null {
   const v = raw.toLowerCase().trim();
   const map: Record<string, UnitàMisura> = {
-    mq: 'mq', 'm2': 'mq', 'm²': 'mq',
-    ml: 'ml', 'm': 'ml', 'ml.': 'ml',
-    mc: 'mc', 'm3': 'mc', 'm³': 'mc',
-    kg: 'kg', 'chilogrammi': 'kg',
-    q: 'q', 'quintali': 'q',
-    t: 't', 'ton': 't', 'tonnellate': 't',
-    nr: 'nr', 'n': 'nr', 'num': 'nr', 'pz': 'nr', 'cad': 'nr', 'cad.': 'nr', 'cadauno': 'nr',
-    hh: 'hh', 'ore': 'hh', 'h': 'hh',
-    ql: 'q', 'quintale': 'q',
-    '%': 'nr', 'percentuale': 'nr',
-    'mq/cm': 'mq',
-    cm: 'ml', 'cm.': 'ml',
-    'a corpo': 'nr', 'corpo': 'nr', 'ac': 'nr', 'a c': 'nr',
-    'cs': 'nr',
-    'g': 'kg', 'gr': 'kg', 'grammi': 'kg',
+    // superfici
+    mq: 'mq', 'm2': 'mq', 'm²': 'mq', 'mq/cm': 'mq', 'mq∕cm': 'mq',
+    'mq/30gg': 'mq', 'mq/30 gg': 'mq', mqxm: 'mq', mqxmesi: 'mq',
+    'mq di base': 'mq', mxm: 'mq', ha: 'mq', 'ha ragguagl': 'mq',
+    // metro lineare
+    ml: 'ml', 'm': 'ml', 'ml.': 'ml', cm: 'ml', 'cm.': 'ml',
+    'm/30gg': 'ml', 'm/30 gg': 'ml', mlxgg: 'ml',
+    // volumi
+    mc: 'mc', 'm3': 'mc', 'm³': 'mc', dm3: 'mc', dmc: 'mc',
+    'mc/30gg': 'mc', 'mc/km': 'mc', 'mc/miglia': 'mc',
+    'mc/ 5km': 'mc', 'mc/ 50m': 'mc',
+    // peso
+    kg: 'kg', 'chilogrammi': 'kg', 'g': 'kg', 'gr': 'kg', 'grammi': 'kg', '100 kg': 'kg',
+    q: 'q', 'quintali': 'q', ql: 'q', 'quintale': 'q', 'q.li': 'q', 'q.': 'q',
+    t: 't', 'ton': 't', 'tonnellate': 't', txkm: 't',
+    // tempo
+    hh: 'hh', 'ore': 'hh', 'h': 'hh', 'ora': 'hh',
+    // numero / cadauno
+    nr: 'nr', 'n': 'nr', 'num': 'nr', 'pz': 'nr',
+    'cad': 'nr', 'cad.': 'nr', 'cadauno': 'nr',
+    'cad/30gg': 'nr', 'cad/gg': 'nr',
+    'cp': 'nr', 'capo': 'nr', 'coppia': 'nr',
+    'a corpo': 'nr', 'corpo': 'nr', 'ac': 'nr', 'a c': 'nr', 'a buca': 'nr',
+    'cs': 'nr', 'gg': 'nr', 'gnt/30gg': 'nr', 'file/100m': 'nr', 'kn': 'nr',
+    // liquidi -> nr
     'l': 'nr', 'lt': 'nr', 'litri': 'nr', 'litro': 'nr',
+    // varie
+    '%': 'nr', 'percentuale': 'nr',
   };
   return map[v] || null;
 }
