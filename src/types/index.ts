@@ -101,6 +101,7 @@ export interface Misurazione {
   id: string;
   descrizione: string; // es: "cucina", "bagno", "detrazioni finestre"
   segno: 1 | -1;       // +1 addizione, -1 sottrazione
+  partiUguali: number; // Moltiplicatore (es: 2 parti uguali = 2×)
   lunghezza: number | null;
   larghezza: number | null;
   altezza: number | null;
