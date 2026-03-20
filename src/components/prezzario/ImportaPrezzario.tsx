@@ -37,26 +37,33 @@ function parsePrezzo(raw: string): number {
 async function parseCSV(file: File): Promise<{ voci: VocePrezzario[]; errori: string[] }> {
   return new Promise((resolve) => {
     const reader = new FileReader();
+    reader.onerror = () => {
+      resolve({ voci: [], errori: ['Errore di lettura file'] });
+    };
     reader.onload = (e) => {
-      const raw = e.target?.result;
-      if (!raw) { resolve({ voci: [], errori: ['File vuoto'] }); return; }
+      try {
+        const raw = e.target?.result;
+        if (!raw) { resolve({ voci: [], errori: ['File vuoto'] }); return; }
 
-      // Leggi come ArrayBuffer per gestire correttamente \n\r (sequenza invertita)
-      const text = typeof raw === 'string' ? raw : new TextDecoder('utf-8').decode(raw as ArrayBuffer);
+        // Leggi come ArrayBuffer per gestire correttamente \n\r (sequenza invertita)
+        const text = typeof raw === 'string' ? raw : new TextDecoder('utf-8').decode(raw as ArrayBuffer);
 
-      // Il file Prezzario-Articolo-2026 usa \n\r come terminatore di riga (invertito!)
-      // Quindi splittiamo su \n\r; fallback su \r\n o \n
-      let lines: string[];
-      if (text.includes('\n\r')) {
-        lines = text.split('\n\r').map(l => l.trim()).filter(l => l.length > 0);
-      } else {
-        lines = text.split(/\r\n|\r|\n/).map(l => l.trim()).filter(l => l.length > 0);
-      }
+        // Il file Prezzario-Articolo-2026 usa \n\r come terminatore di riga (invertito!)
+        // Quindi splittiamo su \n\r; fallback su \r\n o \n
+        let lines: string[];
+        if (text.includes('\n\r')) {
+          lines = text.split('\n\r').map(l => l.trim()).filter(l => l.length > 0);
+        } else {
+          lines = text.split(/\r\n|\r|\n/).map(l => l.trim()).filter(l => l.length > 0);
+        }
 
-      if (lines.length < 2) { resolve({ voci: [], errori: ['File vuoto o non valido'] }); return; }
+        if (lines.length < 2) { resolve({ voci: [], errori: ['File vuoto o non valido'] }); return; }
 
-      // Rileva separatore (| o ;)
-      const sep = (lines[0].match(/\|/g) || []).length > (lines[0].match(/;/g) || []).length ? '|' : ';';
+        // Rileva separatore (| o ; o ,)
+        const pipeCount = (lines[0].match(/\|/g) || []).length;
+        const semiCount = (lines[0].match(/;/g) || []).length;
+        const commaCount = (lines[0].match(/,/g) || []).length;
+        const sep = pipeCount > semiCount && pipeCount > commaCount ? '|' : semiCount > commaCount ? ';' : ',';
 
       // Parse header (prima riga, senza quotes)
       const headers = lines[0].split(sep).map(h => h.replace(/^"|"$/g, '').trim().toLowerCase());
@@ -142,6 +149,9 @@ async function parseCSV(file: File): Promise<{ voci: VocePrezzario[]; errori: st
       }
 
       resolve({ voci, errori });
+      } catch (err) {
+        resolve({ voci: [], errori: [`Errore parsing: ${err instanceof Error ? err.message : String(err)}`] });
+      }
     };
     reader.readAsText(file, 'UTF-8');
   });
