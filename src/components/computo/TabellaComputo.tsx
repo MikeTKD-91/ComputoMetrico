@@ -1,8 +1,8 @@
 import { useCallback } from 'react';
 import { Plus, Trash2, Copy, AlertCircle, Search, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useApp, useRicercaPrezzario } from '@/App';
-import { UNITA_MISURA_FORMULE } from '@/types';
+import { useApp } from '@/store/AppContext';
+import { useRicercaPrezzario } from '@/App';
 import type { RigaComputo, Misurazione, UnitàMisura } from '@/types';
 import { formattaImporto, formattaNumero } from '@/utils/exportUtils';
 
@@ -154,8 +154,6 @@ function BloccoVoce({
 
 }: RigaComputoProps) {
   const { validaRiga } = useApp();
-  const validazione = validaRiga(riga);
-  const formula = UNITA_MISURA_FORMULE[riga.unitaMisura];
 
   const descCompleta = riga.note?.startsWith('__desc__') ? riga.note.replace('__desc__', '') : null;
   const noteVisibili = riga.note && !riga.note.startsWith('__desc__') ? riga.note : '';
@@ -298,7 +296,7 @@ export function TabellaComputo({ categoriaId }: TabellaComputoProps) {
   const { dispatch, getRighePerCategoria, totaliPerCategoria } = useApp();
   const { apriRicerca } = useRicercaPrezzario();
   const righe = getRighePerCategoria(categoriaId);
-  const totaleCategoria = totaliPerCategoria.find(t => t.categoriaId === categoriaId)?.totale || 0;
+  const totaleCategoria = totaliPerCategoria.find((t: any) => t.categoriaId === categoriaId)?.totale || 0;
 
   const handleOpenRicerca = useCallback((rigaId: string) => {
     apriRicerca((voce) => {
@@ -334,11 +332,9 @@ export function TabellaComputo({ categoriaId }: TabellaComputoProps) {
     dispatch({ type: 'DELETE_MISURAZIONE', payload: { rigaId, misurazioneId } });
 
   const handleMoveRiga = (index: number, direction: 'up' | 'down') => {
-    if (!state.computoCorrente) return;
     const newIndex = direction === 'up' ? index - 1 : index + 1;
     if (newIndex < 0 || newIndex >= righe.length) return;
 
-    const allRighe = [...state.computoCorrente.righe];
     const indices = allRighe.map((r, i) => ({ r, i })).filter(({ r }) => r.categoriaId === categoriaId).map(({ i }) => i);
     [allRighe[indices[index]], allRighe[indices[newIndex]]] = [allRighe[indices[newIndex]], allRighe[indices[index]]];
     dispatch({ type: 'REORDER_RIGHE', payload: allRighe });
@@ -355,7 +351,7 @@ export function TabellaComputo({ categoriaId }: TabellaComputoProps) {
         </div>
       ) : (
         <>
-          {righe.map((riga, index) => (
+          {righe.map((riga: any, index: number) => (
             <BloccoVoce
               key={riga.id}
               riga={riga}
