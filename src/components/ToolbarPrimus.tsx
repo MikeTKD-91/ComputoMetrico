@@ -9,6 +9,8 @@ interface ToolbarPrimusProps {
   onExportPDF: () => void;
   onExportExcel: () => void;
   onSave: () => void;
+  onExportJSON: () => void;
+  onImportJSON: (file: File) => void;
 }
 
 export function ToolbarPrimus({
@@ -16,7 +18,9 @@ export function ToolbarPrimus({
   totale,
   onExportPDF,
   onExportExcel,
-  onSave
+  onSave,
+  onExportJSON,
+  onImportJSON
 }: ToolbarPrimusProps) {
   if (!computo) return null;
 
@@ -69,6 +73,16 @@ export function ToolbarPrimus({
             >
               Esporta Excel
             </button>
+            <button
+              onClick={onExportJSON}
+              className="w-full text-left px-4 py-2 hover:bg-blue-50 text-sm text-gray-700 border-t"
+            >
+              Esporta JSON
+            </button>
+            <label className="w-full text-left px-4 py-2 hover:bg-blue-50 text-sm text-gray-700 border-t flex cursor-pointer">
+              Importa JSON
+              <input type="file" accept=".json" className="hidden" onChange={(e) => e.target.files?.[0] && onImportJSON(e.target.files[0])} />
+            </label>
           </div>
         </div>
       </div>

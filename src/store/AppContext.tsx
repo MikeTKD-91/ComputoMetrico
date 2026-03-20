@@ -655,6 +655,8 @@ interface AppContextValue {
   // Helpers
   getRighePerCategoria: (categoriaId: string) => RigaComputo[];
   validaRiga: (riga: RigaComputo) => { valida: boolean; errori: string[] };
+  exportComputo: (id: string) => void;
+  importComputo: (file: File) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -718,6 +720,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return { valida: errori.length === 0, errori };
   }, []);
 
+  const exportComputo = useCallback((id: string) => {
+    const computo = state.computi.find(c => c.id === id);
+    const blob = new Blob([JSON.stringify(computo, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = (computo!.nome || 'computo').replace(/\s+/g, '_') + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [state.computi]);
+
+  const importComputo = useCallback(async (file: File) => {
+    const testo = await file.text();
+    const computo: Computo = JSON.parse(testo);
+    const nuovoComputo = { ...computo, id: uuidv4(), nome: computo.nome + ' (importato)' };
+    const nuoviComputi = [...state.computi, nuovoComputo];
+    localStorage.setItem('computi', JSON.stringify(nuoviComputi));
+    dispatch({ type: 'SET_COMPUTI', payload: nuoviComputi });
+  }, [state.computi]);
+
   const value: AppContextValue = {
     state,
     dispatch,
@@ -725,6 +747,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     totaliPerCategoria,
     getRighePerCategoria,
     validaRiga,
+    exportComputo,
+    importComputo,
   };
 
   return (
