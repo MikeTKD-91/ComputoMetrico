@@ -64,6 +64,8 @@ type Action =
   | { type: 'ADD_MISURAZIONE'; payload: { rigaId: string } }
   | { type: 'UPDATE_MISURAZIONE'; payload: { rigaId: string; misurazioneId: string; updates: Partial<Misurazione> } }
   | { type: 'DELETE_MISURAZIONE'; payload: { rigaId: string; misurazioneId: string } }
+  | { type: 'MOVE_RIGA'; payload: { id: string; direction: 'up' | 'down'; categoriaId: string } }
+  | { type: 'PASTE_MISURAZIONI'; payload: { rigaId: string; misurazioni: Misurazione[] } }
   
   // UI
   | { type: 'TOGGLE_SIDEBAR' }
@@ -632,6 +634,37 @@ function appReducer(state: AppState, action: Action): AppState {
       localStorage.removeItem('prezzario');
       return initialState;
 
+    case 'MOVE_RIGA': {
+      if (!state.computoCorrente) return state;
+      const { id, direction, categoriaId } = action.payload;
+      const tutteRighe = [...state.computoCorrente.righe];
+      const righecat = tutteRighe.filter(r => r.categoriaId === categoriaId);
+      const idx = righecat.findIndex(r => r.id === id);
+      if (idx < 0) return state;
+      const newIdx = direction === 'up' ? idx - 1 : idx + 1;
+      if (newIdx < 0 || newIdx >= righecat.length) return state;
+      const ai = tutteRighe.indexOf(righecat[idx]);
+      const bi = tutteRighe.indexOf(righecat[newIdx]);
+      [tutteRighe[ai], tutteRighe[bi]] = [tutteRighe[bi], tutteRighe[ai]];
+      const computoAggiornato = { ...state.computoCorrente, righe: tutteRighe, dataModifica: new Date().toISOString() };
+      const computiAggiornati = state.computi.map(c => c.id === computoAggiornato.id ? computoAggiornato : c);
+      localStorage.setItem('computi', JSON.stringify(computiAggiornati));
+      return { ...state, computi: computiAggiornati, computoCorrente: computoAggiornato };
+    }
+    case 'PASTE_MISURAZIONI': {
+      if (!state.computoCorrente) return state;
+      const { rigaId, misurazioni } = action.payload;
+      const computoAggiornato = {
+        ...state.computoCorrente,
+        righe: state.computoCorrente.righe.map(r =>
+          r.id === rigaId ? { ...r, misurazioni: [...r.misurazioni, ...misurazioni] } : r
+        ),
+        dataModifica: new Date().toISOString(),
+      };
+      const computiAggiornati = state.computi.map(c => c.id === computoAggiornato.id ? computoAggiornato : c);
+      localStorage.setItem('computi', JSON.stringify(computiAggiornati));
+      return { ...state, computi: computiAggiornati, computoCorrente: computoAggiornato };
+    }
     default:
       return state;
   }
