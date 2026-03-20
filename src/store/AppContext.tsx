@@ -84,6 +84,7 @@ function calculateQuantitaMisurazione(
   misurazione: Misurazione
 ): number {
   const formula = UNITA_MISURA_FORMULE[unitaMisura];
+  const partiUguali = misurazione.partiUguali ?? 1;
   if (formula.richiedeLunghezza || formula.richiedeLarghezza || formula.richiedeAltezza) {
     const l = misurazione.lunghezza ?? 0;
     const la = misurazione.larghezza ?? 0;
@@ -91,7 +92,7 @@ function calculateQuantitaMisurazione(
     if (formula.richiedeLunghezza && l === 0) return 0;
     if (formula.richiedeLarghezza && la === 0) return 0;
     if (formula.richiedeAltezza && a === 0) return 0;
-    return formula.formula(l, la, a);
+    return formula.formula(l, la, a) * partiUguali;
   }
   return 0;
 }
@@ -114,6 +115,7 @@ function createEmptyMisurazione(): Misurazione {
     id: uuidv4(),
     descrizione: '',
     segno: 1,
+    partiUguali: 1,
     lunghezza: null,
     larghezza: null,
     altezza: null,
@@ -397,7 +399,7 @@ function appReducer(state: AppState, action: Action): AppState {
             const misurazioni = (updates.misurazioni ?? r.misurazioni).map(m => ({
               ...m,
               quantitaParziale: calculateQuantitaMisurazione(unitaMisura, m),
-            }));
+            } as Misurazione));
             updates.misurazioni = misurazioni;
             updates.quantita = calculateQuantitaTotale(unitaMisura, misurazioni);
           }
@@ -519,7 +521,7 @@ function appReducer(state: AppState, action: Action): AppState {
           if (r.id !== action.payload.rigaId) return r;
           const misurazioni = r.misurazioni.map(m => {
             if (m.id !== action.payload.misurazioneId) return m;
-            const updated = { ...m, ...action.payload.updates };
+            const updated: Misurazione = { ...m, ...action.payload.updates };
             updated.quantitaParziale = calculateQuantitaMisurazione(r.unitaMisura, updated);
             return updated;
           });
