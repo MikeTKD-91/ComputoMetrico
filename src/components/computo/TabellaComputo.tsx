@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useApp } from '@/store/AppContext';
 import { useRicercaPrezzario } from '@/App';
 import type { RigaComputo, Misurazione, UnitàMisura } from '@/types';
+import { UNITA_MISURA_FORMULE } from '@/types';
 import { formattaImporto, formattaNumero } from '@/utils/exportUtils';
 
 // ============================================================
@@ -19,7 +20,7 @@ interface RigaMisurazioneProps {
 }
 
 function RigaMisurazione({ misurazione, unitaMisura, index, onUpdate, onDelete, canDelete }: RigaMisurazioneProps) {
-  const formula = UNITA_MISURA_FORMULE[unitaMisura];
+  const formula = UNITA_MISURA_FORMULE[unitaMisura as UnitàMisura];
   const isManuale = !formula.richiedeLunghezza && !formula.richiedeLarghezza && !formula.richiedeAltezza;
   const isNeg = misurazione.segno === -1;
 
@@ -153,8 +154,6 @@ function BloccoVoce({
   onOpenRicerca,
 
 }: RigaComputoProps) {
-  const { validaRiga } = useApp();
-
   const descCompleta = riga.note?.startsWith('__desc__') ? riga.note.replace('__desc__', '') : null;
   const noteVisibili = riga.note && !riga.note.startsWith('__desc__') ? riga.note : '';
 
@@ -185,7 +184,7 @@ function BloccoVoce({
           onChange={(e) => onUpdate(riga.id, { unitaMisura: e.target.value as UnitàMisura })}
           className="w-24 h-8 px-2 text-xs bg-white border border-gray-300 rounded focus:ring-1 focus:ring-blue-400"
         >
-          {Object.entries(UNITA_MISURA_FORMULE).map(([key, info]) => (
+          {Object.entries(UNITA_MISURA_FORMULE).map(([key, info]: [string, typeof UNITA_MISURA_FORMULE[UnitàMisura]]) => (
             <option key={key} value={key}>{key} — {info.descrizione}</option>
           ))}
         </select>
@@ -335,9 +334,9 @@ export function TabellaComputo({ categoriaId }: TabellaComputoProps) {
     const newIndex = direction === 'up' ? index - 1 : index + 1;
     if (newIndex < 0 || newIndex >= righe.length) return;
 
-    const indices = allRighe.map((r, i) => ({ r, i })).filter(({ r }) => r.categoriaId === categoriaId).map(({ i }) => i);
-    [allRighe[indices[index]], allRighe[indices[newIndex]]] = [allRighe[indices[newIndex]], allRighe[indices[index]]];
-    dispatch({ type: 'REORDER_RIGHE', payload: allRighe });
+    const nuoveRighe = [...righe] as RigaComputo[];
+    [nuoveRighe[index], nuoveRighe[newIndex]] = [nuoveRighe[newIndex], nuoveRighe[index]];
+    dispatch({ type: 'REORDER_RIGHE', payload: nuoveRighe });
   };
 
   return (
