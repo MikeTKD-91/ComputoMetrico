@@ -102,15 +102,42 @@ async function parseCSV(file: File): Promise<{ voci: VocePrezzario[]; errori: st
       // Trova indici colonne con matching più robusto
       const iCodice      = headers.findIndex(h => h === 'codice' || h === 'code' || h.startsWith('cod'));
       const iUM          = headers.findIndex(h => 
-        h === 'um' || h === 'u.m.' || h.includes('unit') || h.includes('misura') || h === 'uom'
+        h === 'um' || h === 'u.m.' || h.includes('unit') || h.includes('misura') || h === 'uom' || h === 'unità di misura'
       );
-      const iPrezzo      = headers.findIndex(h => 
-        h === 'prezzo' || h === 'price' || h === 'importo' || h === 'costo' || h === 'totale' || h.includes('prezzo')
-      );
+      
+      // Prezzo: ricerca la colonna finale totale
+      // Priorità: "prezzo" (senza qualificativi) > "prezzo totale" > altre varianti
+      let iPrezzo = -1;
+      // Primo: cerca "prezzo" esatto (deve essere l'ultimo possibile, non "prezzo senza s.g.")
+      for (let i = headers.length - 1; i >= 0; i--) {
+        const h = headers[i];
+        if (h === 'prezzo' || h === 'price') {
+          iPrezzo = i;
+          break;
+        }
+      }
+      // Se non trovato, cerca varianti
+      if (iPrezzo < 0) {
+        iPrezzo = headers.findIndex(h => 
+          h.includes('prezzo totale') || h.includes('totale prezzo') || 
+          (h.includes('prezzo') && !h.includes('senza')) || 
+          h === 'importo' || h === 'costo'
+        );
+      }
+      
       // Ricerca colonne A, B, C per il calcolo del totale
-      const iA           = headers.findIndex(h => h === 'a' || h === 'voce a' || h === 'comp. a');
-      const iB           = headers.findIndex(h => h === 'b' || h === 'voce b' || h === 'comp. b');
-      const iC           = headers.findIndex(h => h === 'c' || h === 'voce c' || h === 'comp. c');
+      // A = prezzo base (senza S.G.)
+      // B = utili / margine
+      // C = spese generali
+      const iA           = headers.findIndex(h => 
+        h.includes('prezzo senza') || h.includes('a') || h.includes('voce a') || h.includes('comp. a') || h.includes('base')
+      );
+      const iB           = headers.findIndex(h => 
+        h.includes('utili') || h.includes('b') || h.includes('voce b') || h.includes('comp. b') || h.includes('margine')
+      );
+      const iC           = headers.findIndex(h => 
+        h.includes('spese generali') || h.includes('c') || h.includes('voce c') || h.includes('comp. c')
+      );
       
       const iArticolo    = headers.findIndex(h => 
         h === 'articolo' || h === 'description' || h === 'descrizione' || h.includes('articolo')
