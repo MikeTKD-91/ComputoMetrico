@@ -77,7 +77,7 @@ async function parseCSV(file: File): Promise<{ voci: VocePrezzario[]; errori: st
         if (!raw) { resolve({ voci: [], errori: ['File vuoto'] }); return; }
 
         // Leggi come ArrayBuffer per gestire correttamente \n\r (sequenza invertita)
-        const text = typeof raw === 'string' ? raw : new TextDecoder('utf-8').decode(raw as ArrayBuffer);
+        const text = (typeof raw === 'string' ? raw : new TextDecoder('utf-8').decode(raw as ArrayBuffer)).replace(/^\uFEFF/, '');
 
         // Il file Prezzario-Articolo-2026 usa \n\r come terminatore di riga (invertito!)
         // Quindi splittiamo su \n\r; fallback su \r\n o \n
@@ -401,7 +401,7 @@ export function ImportaPrezzario() {
       }
       setImportResult({ vociImportate: nuove.length, errori });
     } catch (err) {
-      setImportResult({ vociImportate: 0, errori: ['Errore durante il parsing del file'] });
+      setImportResult({ vociImportate: 0, errori: ['Errore durante il parsing del file: ' + (err instanceof Error ? err.message : String(err))] });
     }
     setImporting(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
