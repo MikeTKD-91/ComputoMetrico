@@ -70,14 +70,11 @@ export function RicercaPrezzario({ onSelect, onClose }: RicercaPrezzarioProps) {
     if (filtroCategoria) voci = voci.filter(v => v.categoria === filtroCategoria);
     if (filtroSottoCategoria) voci = voci.filter(v => v.sottoCategoria === filtroSottoCategoria);
     if (debouncedSearch.trim()) {
-      const s = debouncedSearch.toLowerCase();
-      voci = voci.filter(v =>
-        v.codice.toLowerCase().includes(s) ||
-        v.descrizione.toLowerCase().includes(s) ||
-        (v.voceBreve ?? '').toLowerCase().includes(s) ||
-        (v.categoria ?? '').toLowerCase().includes(s) ||
-        (v.sottoCategoria ?? '').toLowerCase().includes(s)
-      );
+      const parole = debouncedSearch.toLowerCase().split(/\s+/).filter(p => p.length > 1);
+      voci = voci.filter(v => {
+        const testo = [v.codice, v.descrizione, v.voceBreve ?? '', v.categoria ?? '', v.sottoCategoria ?? ''].join(' ').toLowerCase();
+        return parole.every(p => testo.includes(p));
+      });
     }
     return voci.slice(0, 200);
   }, [state.prezzario, debouncedSearch, filtroUM, filtroCategoria, filtroSottoCategoria]);
