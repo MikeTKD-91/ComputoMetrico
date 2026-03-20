@@ -34,6 +34,7 @@ function GestioneCategorie() {
   const [categoriaPadre, setCategoriaPadre] = useState<string>('');
   const [capitoliSelezionati, setCapitoliSelezionati] = useState<Set<string>>(new Set());
   const [sottocategorieDaCreare, setSottocategorieDaCreare] = useState('');
+  const [showCreaSottocategorie, setShowCreaSottocategorie] = useState<boolean>(true);
 
   const categoriePadre = state.computoCorrente?.categorie.filter(c => !c.parentId) || [];
   const categorieFiglie = state.computoCorrente?.categorie.filter(c => c.parentId) || [];
@@ -126,7 +127,7 @@ function GestioneCategorie() {
               onKeyDown={(e) => e.key === 'Enter' && handleAggiungi()}
               className="bg-white"
             />
-            {categoriePadre.length > 0 && (
+            {categoriePadre.length > 0 && showCreaSottocategorie && (
               <select
                 value={categoriaPadre}
                 onChange={(e) => setCategoriaPadre(e.target.value)}
@@ -145,7 +146,7 @@ function GestioneCategorie() {
         </div>
 
         {/* Sezione creazione sottocategorie multiple */}
-        {categoriePadre.length > 0 && (
+        {categoriePadre.length > 0 && showCreaSottocategorie && (
           <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-blue-800">Crea sottocategorie per capitoli selezionati</h3>
