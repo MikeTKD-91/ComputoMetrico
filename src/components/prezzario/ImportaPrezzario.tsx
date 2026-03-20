@@ -151,13 +151,13 @@ async function parseCSV(file: File): Promise<{ voci: VocePrezzario[]; errori: st
       // B = utili / margine
       // C = spese generali
       const iA           = headers.findIndex(h => 
-        h.includes('prezzo senza') || h.includes('a') || h.includes('voce a') || h.includes('comp. a') || h.includes('base')
+        h.includes('prezzo senza') || h.includes('voce a') || h.includes('comp. a') || h.includes('base')
       );
       const iB           = headers.findIndex(h => 
-        h.includes('utili') || h.includes('b') || h.includes('voce b') || h.includes('comp. b') || h.includes('margine')
+        h.includes('utili') || h.includes('voce b') || h.includes('comp. b') || h.includes('margine')
       );
       const iC           = headers.findIndex(h => 
-        h.includes('spese generali') || h.includes('c') || h.includes('voce c') || h.includes('comp. c')
+        h.includes('spese generali') || h.includes('voce c') || h.includes('comp. c')
       );
       
       const iArticolo    = headers.findIndex(h => 
