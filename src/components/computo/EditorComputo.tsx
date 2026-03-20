@@ -565,18 +565,16 @@ export function EditorComputo() {
                   {categoriaEspansa[categoria.id] && (
                     <div className="p-4 bg-gray-50/20">
                       {/* Tabella categoria principale */}
-                      {righeCat.length > 0 && (
-                        <div className="mb-6">
-                          <TabellaComputo categoriaId={categoria.id} />
-                        </div>
-                      )}
+                      <div className="mb-6">
+                        <TabellaComputo categoriaId={categoria.id} />
+                      </div>
                       
                       {/* Sottocategorie */}
                       {sottocategorie.map((sottoCat) => {
                         const righeSottoCat = state.computoCorrente!.righe.filter(r => r.categoriaId === sottoCat.id);
                         const totSotto = righeSottoCat.reduce((s, r) => s + r.importo, 0);
                         
-                        return righeSottoCat.length > 0 ? (
+                        return (
                           <div key={sottoCat.id} className="mb-6">
                             <div className="flex items-center justify-between px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg mb-3">
                               <span className="text-sm font-semibold text-blue-800">{sottoCat.nome}</span>
@@ -584,7 +582,7 @@ export function EditorComputo() {
                             </div>
                             <TabellaComputo categoriaId={sottoCat.id} />
                           </div>
-                        ) : null;
+                        );
                       })}
                     </div>
                   )}
