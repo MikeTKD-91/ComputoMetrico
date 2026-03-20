@@ -24,6 +24,14 @@ function normalizzaUM(raw: string): UnitàMisura | null {
     t: 't', 'ton': 't', 'tonnellate': 't',
     nr: 'nr', 'n': 'nr', 'num': 'nr', 'pz': 'nr', 'cad': 'nr', 'cad.': 'nr', 'cadauno': 'nr',
     hh: 'hh', 'ore': 'hh', 'h': 'hh',
+    ql: 'q', 'quintale': 'q',
+    '%': 'nr', 'percentuale': 'nr',
+    'mq/cm': 'mq',
+    cm: 'ml', 'cm.': 'ml',
+    'a corpo': 'nr', 'corpo': 'nr', 'ac': 'nr', 'a c': 'nr',
+    'cs': 'nr',
+    'g': 'kg', 'gr': 'kg', 'grammi': 'kg',
+    'l': 'nr', 'lt': 'nr', 'litri': 'nr', 'litro': 'nr',
   };
   return map[v] || null;
 }
