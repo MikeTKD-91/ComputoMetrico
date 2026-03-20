@@ -130,6 +130,8 @@ async function parseCSV(file: File): Promise<{ voci: VocePrezzario[]; errori: st
       // Priorità: "prezzo" (senza qualificativi) > "prezzo totale" > altre varianti
       let iPrezzo = -1;
       // Primo: cerca "prezzo" esatto (deve essere l'ultimo possibile, non "prezzo senza s.g.")
+      // Forza colonna 8 per Prezzario-Articolo-2026
+      if (sep === '|' && headers[8] === 'prezzo') { iPrezzo = 8; }
       for (let i = headers.length - 1; i >= 0; i--) {
         const h = headers[i];
         if (h === 'prezzo' || h === 'price') {
