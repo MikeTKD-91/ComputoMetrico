@@ -1,6 +1,17 @@
 /* ============================================
-   STILI CUSTOM PER COMPUTO METRICO
+   STILI COMPUTO METRICO - TEMA PRIMUS
    ============================================ */
+
+:root {
+  /* Colori Primus */
+  --primus-blue: #003f87;
+  --primus-blue-light: #1e5ba8;
+  --primus-blue-lighter: #2e7ec9;
+  --primus-gray: #f5f5f5;
+  --primus-border: #d0d0d0;
+  --error-red: #d32f2f;
+  --success-green: #388e3c;
+}
 
 /* Scrollbar personalizzata */
 ::-webkit-scrollbar {
@@ -9,67 +20,202 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: #f5f5f5;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: #999;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a1a1a1;
+  background: #666;
 }
 
-/* Stili per la tabella computo */
+/* ===== LAYOUT PRINCIPALE ===== */
+
+body {
+  background-color: #ffffff;
+  color: #333;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Sidebar */
+aside {
+  background-color: #f8f8f8;
+  border-right: 1px solid var(--primus-border);
+}
+
+aside .h-16 {
+  background-color: var(--primus-blue);
+  color: white;
+}
+
+aside nav button:hover {
+  background-color: #e8e8e8;
+}
+
+aside nav button.active {
+  background-color: var(--primus-blue-lighter);
+  color: white;
+}
+
+/* ===== HEADER / TOOLBAR ===== */
+
+.toolbar-primus {
+  background: linear-gradient(180deg, var(--primus-blue) 0%, var(--primus-blue-light) 100%);
+  border-bottom: 2px solid #00254d;
+  color: white;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.toolbar-computo-info {
+  flex: 1;
+}
+
+.toolbar-computo-nome {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.toolbar-computo-cliente {
+  font-size: 12px;
+  opacity: 0.9;
+  margin: 2px 0 0 0;
+}
+
+.toolbar-totale {
+  text-align: right;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 8px 16px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.toolbar-totale-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  font-weight: 600;
+  opacity: 0.9;
+  display: block;
+}
+
+.toolbar-totale-valore {
+  font-size: 20px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+/* ===== TABELLA COMPUTO ===== */
+
 .tabella-computo {
   font-size: 13px;
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.tabella-computo thead {
+  background-color: var(--primus-gray);
+  border-bottom: 2px solid var(--primus-border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .tabella-computo th {
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
-  font-size: 11px;
-  letter-spacing: 0.5px;
+  font-size: 10px;
+  letter-spacing: 1px;
+  padding: 10px 8px;
+  text-align: left;
+  color: #333;
+  border-right: 1px solid var(--primus-border);
 }
 
 .tabella-computo td {
-  padding: 4px 8px;
+  padding: 8px;
+  border-bottom: 1px solid #f0f0f0;
+  border-right: 1px solid #f0f0f0;
 }
 
-/* Input nella tabella */
-.tabella-computo input {
-  transition: all 0.15s ease;
+.tabella-computo tbody tr:nth-child(even) {
+  background-color: #fafafa;
 }
 
-.tabella-computo input:focus {
-  background-color: white;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+.tabella-computo tbody tr:hover {
+  background-color: #f0f7ff;
 }
 
-/* Celle calcolate */
-.cella-calcolata {
-  background-color: #f0f9ff;
-  font-weight: 500;
-  color: #0369a1;
-}
+/* ===== CATEGORIE ===== */
 
-/* Celle con errori */
-.cella-errore {
-  background-color: #fef2f2;
-  border-color: #ef4444;
-}
-
-/* Categorie */
 .categoria-header {
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-  border-left: 4px solid #3b82f6;
+  background: linear-gradient(90deg, var(--primus-gray) 0%, #eeeeee 100%);
+  border-left: 4px solid var(--primus-blue);
+  font-weight: 700;
+  color: #333;
 }
 
-/* Totale */
+.categoria-numero {
+  display: inline-block;
+  background-color: var(--primus-blue);
+  color: white;
+  border-radius: 3px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  margin-right: 8px;
+}
+
+/* ===== INPUT E FORM ===== */
+
+input, select, textarea {
+  border: 1px solid var(--primus-border);
+  border-radius: 3px;
+  font-size: 13px;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--primus-blue-lighter);
+  box-shadow: 0 0 0 2px rgba(30, 91, 168, 0.15);
+}
+
+/* ===== PULSANTI ===== */
+
+button, [role="button"] {
+  border-radius: 3px;
+  font-weight: 500;
+}
+
+.btn-primary {
+  background-color: var(--primus-blue);
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: var(--primus-blue-light);
+}
+
+/* ===== TOTALI ===== */
+
+.totale-categoria {
+  background-color: #e3f2fd;
+  border: 1px solid #90caf9;
+  font-weight: 700;
+}
+
 .totale-generale {
-  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-  border: 2px solid #3b82f6;
+  background: linear-gradient(180deg, var(--primus-blue-lighter) 0%, var(--primus-blue-light) 100%);
+  color: white;
+  border: 2px solid var(--primus-blue);
+  font-weight: 700;
+  font-size: 16px;
 }
 
 /* Autocomplete dropdown */

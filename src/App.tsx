@@ -49,19 +49,19 @@ function Sidebar() {
 
   return (
     <aside className={`fixed left-0 top-0 h-full bg-white border-r z-40 transition-all duration-300 ease-in-out ${state.ui.sidebarOpen ? 'w-64' : 'w-16'}`}>
-      <div className="h-16 flex items-center justify-between px-4 border-b">
+      <div className="h-16 flex items-center justify-between px-4 bg-gradient-to-b from-blue-900 to-blue-800 text-white border-b">
         {state.ui.sidebarOpen ? (
           <>
             <div className="flex items-center gap-2">
-              <Calculator className="h-6 w-6 text-blue-600" />
+              <Calculator className="h-6 w-6" />
               <span className="font-bold text-lg">ComputoMetrico</span>
             </div>
-            <Button variant="ghost" size="sm" onClick={() => dispatch({ type: 'TOGGLE_SIDEBAR' })} className="h-8 w-8 p-0">
+            <Button variant="ghost" size="sm" onClick={() => dispatch({ type: 'TOGGLE_SIDEBAR' })} className="h-8 w-8 p-0 text-white hover:bg-blue-700">
               <ChevronLeft className="h-4 w-4" />
             </Button>
           </>
         ) : (
-          <Button variant="ghost" size="sm" onClick={() => dispatch({ type: 'TOGGLE_SIDEBAR' })} className="h-8 w-8 p-0 mx-auto">
+          <Button variant="ghost" size="sm" onClick={() => dispatch({ type: 'TOGGLE_SIDEBAR' })} className="h-8 w-8 p-0 mx-auto text-white hover:bg-blue-700">
             <Menu className="h-4 w-4" />
           </Button>
         )}
@@ -72,7 +72,7 @@ function Sidebar() {
           <button
             key={item.id}
             onClick={() => dispatch({ type: 'SET_ACTIVE_TAB', payload: item.id })}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${state.ui.activeTab === item.id ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-100 text-gray-700'} ${!state.ui.sidebarOpen && 'justify-center'}`}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${state.ui.activeTab === item.id ? 'bg-blue-100 text-blue-900 font-semibold' : 'hover:bg-gray-200 text-gray-700'} ${!state.ui.sidebarOpen && 'justify-center'}`}
           >
             <item.icon className="h-5 w-5 flex-shrink-0" />
             {state.ui.sidebarOpen && (
@@ -89,11 +89,11 @@ function Sidebar() {
 
       {state.ui.sidebarOpen && state.computoCorrente && (
         <div className="px-4 py-2">
-          <div className="bg-blue-50 rounded-lg p-3">
-            <p className="text-xs text-blue-600 font-medium mb-1">COMPUTO APERTO</p>
-            <p className="font-semibold text-sm truncate">{state.computoCorrente.nome}</p>
-            <p className="text-xs text-gray-500 mt-1">{state.computoCorrente.righe.length} righe</p>
-            <p className="text-lg font-bold text-blue-700 mt-2">
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-3 border border-blue-200">
+            <p className="text-xs text-blue-700 font-bold mb-1 uppercase tracking-wide">Computo Aperto</p>
+            <p className="font-semibold text-sm truncate text-gray-800">{state.computoCorrente.nome}</p>
+            <p className="text-xs text-gray-600 mt-1">{state.computoCorrente.righe.length} righe</p>
+            <p className="text-lg font-bold text-blue-900 mt-2">
               {new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(totaleGenerale)}
             </p>
           </div>
@@ -102,7 +102,7 @@ function Sidebar() {
 
       {state.ui.sidebarOpen && (
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t">
-          <p className="text-xs text-gray-400 text-center">Computo Metrico Estimativo v1.0</p>
+          <p className="text-xs text-gray-400 text-center">Computo Metrico v1.0</p>
         </div>
       )}
     </aside>
