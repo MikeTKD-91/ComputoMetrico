@@ -477,7 +477,7 @@ function RiepilogoStampa() {
 // COMPONENTE PRINCIPALE EDITOR
 // ============================================
 export function EditorComputo() {
-  const { state, totaleGenerale, exportComputo, importComputo } = useApp();
+  const { state, totaleGenerale, exportComputo } = useApp();
   const [tabAttiva, setTabAttiva] = useState<'intestazione' | 'computo' | 'categorie' | 'riepilogo'>('computo');
   const [categoriaEspansa, setCategoriaEspansa] = useState<Record<string, boolean>>({});
 
@@ -507,7 +507,6 @@ export function EditorComputo() {
         onExportExcel={() => esportaComputoExcel(state.computoCorrente!)}
         onSave={() => {}}
         onExportJSON={() => exportComputo(state.computoCorrente!.id)}
-        onImportJSON={(file) => importComputo(file)}
       />
       
       <div className="w-full min-h-screen bg-gray-50">

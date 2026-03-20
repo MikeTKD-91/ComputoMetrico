@@ -155,7 +155,7 @@ function CreaComputoDialog({ open, onOpenChange }: CreaComputoDialogProps) {
 // ============================================
 
 export function ListaComputi() {
-  const { state, dispatch } = useApp();
+  const { state, dispatch, importComputo } = useApp();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -190,10 +190,18 @@ export function ListaComputi() {
             {state.computi.length} {state.computi.length === 1 ? 'computo' : 'computi'} salvati
           </p>
         </div>
-        <Button onClick={() => setDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nuovo Computo
-        </Button>
+        <div className="flex gap-2">
+          <label className="cursor-pointer">
+            <Button asChild variant="outline">
+              <span>📂 Importa JSON</span>
+            </Button>
+            <input type="file" accept=".json" className="hidden" onChange={(e) => { if(e.target.files?.[0]) importComputo(e.target.files[0]); }} />
+          </label>
+          <Button onClick={() => setDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nuovo Computo
+          </Button>
+        </div>
       </div>
 
       {/* Search */}
