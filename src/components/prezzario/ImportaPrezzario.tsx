@@ -105,8 +105,13 @@ async function parseCSV(file: File): Promise<{ voci: VocePrezzario[]; errori: st
         h === 'um' || h === 'u.m.' || h.includes('unit') || h.includes('misura') || h === 'uom'
       );
       const iPrezzo      = headers.findIndex(h => 
-        h === 'prezzo' || h === 'price' || h === 'importo' || h === 'costo' || h.includes('prezzo')
+        h === 'prezzo' || h === 'price' || h === 'importo' || h === 'costo' || h === 'totale' || h.includes('prezzo')
       );
+      // Ricerca colonne A, B, C per il calcolo del totale
+      const iA           = headers.findIndex(h => h === 'a' || h === 'voce a' || h === 'comp. a');
+      const iB           = headers.findIndex(h => h === 'b' || h === 'voce b' || h === 'comp. b');
+      const iC           = headers.findIndex(h => h === 'c' || h === 'voce c' || h === 'comp. c');
+      
       const iArticolo    = headers.findIndex(h => 
         h === 'articolo' || h === 'description' || h === 'descrizione' || h.includes('articolo')
       );
@@ -121,11 +126,14 @@ async function parseCSV(file: File): Promise<{ voci: VocePrezzario[]; errori: st
       );
 
       // Debug: verifica se sono state trovate le colonne critiche
-      if (iCodice < 0 || iPrezzo < 0 || iUM < 0) {
+      if (iCodice < 0 || iUM < 0) {
         const erroriHeader = [];
         if (iCodice < 0) erroriHeader.push('Colonna "codice" non trovata');
-        if (iPrezzo < 0) erroriHeader.push('Colonna "prezzo" non trovata');
         if (iUM < 0) erroriHeader.push('Colonna "unit. misura" non trovata');
+        // Prezzo può essere: colonna diretta oppure somma di A+B+C
+        if (iPrezzo < 0 && (iA < 0 || iB < 0 || iC < 0)) {
+          erroriHeader.push('Colonna "prezzo" non trovata, e nemmeno A+B+C');
+        }
         erroriHeader.push(`Header trovato: ${headers.join(' | ')}`);
         resolve({ voci: [], errori: erroriHeader });
         return;
@@ -188,11 +196,33 @@ async function parseCSV(file: File): Promise<{ voci: VocePrezzario[]; errori: st
           continue; 
         }
 
-        // Prezzo (colonna "Prezzo", non "Prezzo senza S.G.")
-        const prezzoRaw = iPrezzo >= 0 ? get(iPrezzo) : '';
-        const prezzoUnitario = parsePrezzo(prezzoRaw);
+        // Prezzo: preferibilmente prezzo diretto, altrimenti somma A+B+C
+        let prezzoUnitario = 0;
+        
+        if (iPrezzo >= 0) {
+          // Se esiste colonna prezzo, usala
+          const prezzoRaw = get(iPrezzo);
+          prezzoUnitario = parsePrezzo(prezzoRaw);
+        }
+        
+        // Se prezzo è 0 (o non trovato) e abbiamo A, B, C: sommali
+        if (prezzoUnitario <= 0 && iA >= 0 && iB >= 0 && iC >= 0) {
+          const a = parsePrezzo(get(iA));
+          const b = parsePrezzo(get(iB));
+          const c = parsePrezzo(get(iC));
+          prezzoUnitario = a + b + c;
+        }
+        
         if (prezzoUnitario <= 0) { 
-          errori.push(`Riga ${i + 1}: prezzo non valido "${prezzoRaw}" (ricevuto: ${prezzoUnitario})`); 
+          const prezzoRaw = iPrezzo >= 0 ? get(iPrezzo) : '(nessun valore)';
+          if (iA >= 0 && iB >= 0 && iC >= 0) {
+            const a = get(iA);
+            const b = get(iB);
+            const c = get(iC);
+            errori.push(`Riga ${i + 1}: prezzo non valido - Prezzo: "${prezzoRaw}", A: "${a}", B: "${b}", C: "${c}"`);
+          } else {
+            errori.push(`Riga ${i + 1}: prezzo non valido "${prezzoRaw}" (ricevuto: ${prezzoUnitario})`);
+          }
           continue; 
         }
 
