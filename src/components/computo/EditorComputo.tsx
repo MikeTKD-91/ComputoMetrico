@@ -18,6 +18,7 @@ import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useApp } from '@/store/AppContext';
+import { ToolbarPrimus } from '@/components/ToolbarPrimus';
 import { TabellaComputo } from './TabellaComputo';
 import { esportaComputoPDF, esportaComputoExcel, formattaImporto } from '@/utils/exportUtils';
 import type { Categoria } from '@/types';
@@ -306,7 +307,7 @@ function RiepilogoStampa() {
 // COMPONENTE PRINCIPALE EDITOR
 // ============================================
 export function EditorComputo() {
-  const { state } = useApp();
+  const { state, totaleGenerale } = useApp();
   const [tabAttiva, setTabAttiva] = useState<'intestazione' | 'computo' | 'categorie' | 'riepilogo'>('computo');
   const [categoriaEspansa, setCategoriaEspansa] = useState<Record<string, boolean>>({});
 
@@ -325,7 +326,16 @@ export function EditorComputo() {
   if (!state.computoCorrente) return null;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div className="w-full">
+      <ToolbarPrimus
+        computo={state.computoCorrente}
+        totale={totaleGenerale}
+        onExportPDF={() => esportaComputoPDF(state.computoCorrente!)}
+        onExportExcel={() => esportaComputoExcel(state.computoCorrente!)}
+        onSave={() => {}}
+      />
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       {/* TABS STILE PRIMUS */}
       <div className="flex bg-gray-100 p-1 rounded-xl mb-8 gap-1 w-fit mx-auto shadow-inner border border-gray-200">
         {[
@@ -386,6 +396,7 @@ export function EditorComputo() {
         )}
 
         {tabAttiva === 'riepilogo' && <RiepilogoStampa />}
+      </div>
       </div>
     </div>
   );
