@@ -617,12 +617,9 @@ function appReducer(state: AppState, action: Action): AppState {
     case 'LOAD_FROM_STORAGE': {
       try {
         const computiSalvati = localStorage.getItem('computi');
-        const prezzarioSalvato = localStorage.getItem('prezzario');
-        
         return {
           ...state,
           computi: computiSalvati ? JSON.parse(computiSalvati) : [],
-          prezzario: prezzarioSalvato ? JSON.parse(prezzarioSalvato) : [],
         };
       } catch (e) {
         console.error('Errore nel caricamento dal localStorage:', e);
@@ -667,6 +664,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Carica dati dal localStorage all'avvio
   React.useEffect(() => {
     dispatch({ type: 'LOAD_FROM_STORAGE' });
+    import('@/store/db').then(({ caricaPrezzarioDB }) => {
+      caricaPrezzarioDB().then(voci => {
+        if (voci.length > 0) dispatch({ type: 'SET_PREZZARIO', payload: voci });
+      });
+    });
   }, []);
 
   // Computed values

@@ -8,6 +8,7 @@ import { useApp } from '@/store/AppContext';
 import { UNITA_MISURA_FORMULE } from '@/types';
 import type { VocePrezzario, UnitàMisura } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
+import { salvaPrezzarioDB } from '@/store/db';
 
 const UNITA_OPTIONS = Object.keys(UNITA_MISURA_FORMULE) as UnitàMisura[];
 
@@ -380,7 +381,7 @@ export function ImportaPrezzario() {
 
   const persist = (updated: VocePrezzario[]) => {
     dispatch({ type: 'SET_PREZZARIO', payload: updated });
-    localStorage.setItem('prezzario', JSON.stringify(updated));
+    salvaPrezzarioDB(updated).catch(console.error);
   };
 
   const handleAdd = (v: VocePrezzario) => { persist([...voci, v]); setShowAddForm(false); };
